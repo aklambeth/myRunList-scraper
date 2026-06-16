@@ -32,3 +32,17 @@ sites:
     scraper: R2D2H3Scraper
     ttl_max: 5
     enabled: true
+
+  hh3:
+    name: "hh3"
+    display_name: "Hursley Hash House Harriers"
+    scraper: HH3Scraper
+    ttl_max: 5
+    enabled: true
+
+  chi3:
+    name: "chi3"
+    display_name: "Chichester Hash House Harriers"
+    scraper: CHI3Scraper
+    ttl_max: 5
+    enabled: true
