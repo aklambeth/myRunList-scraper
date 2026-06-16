@@ -40,6 +40,7 @@ def run_site(
     *,
     dry_run: bool = False,
     state: StateStore | None = None,
+    _collect: list | None = None,
 ) -> int:
     """Run a single scraper. Returns process-style exit code (0 ok)."""
     cfg = site_config(site, config)
@@ -88,7 +89,10 @@ def run_site(
 
     if dry_run:
         print(f"[{site}] DRY RUN ok: {len(records)} records validated (not written).")
-        print(json.dumps(records, indent=2))
+        if _collect is not None:
+            _collect.extend(records)
+        else:
+            print(json.dumps(records, indent=2))
         return 0
 
     output_writer.write(site, records)
@@ -111,14 +115,32 @@ def run_site(
 
 
 def run_all(config: dict, *, dry_run: bool = False) -> int:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     rc = 0
     state = StateStore()
-    for site in enabled_sites(config):
-        if state.is_disabled(site) and not dry_run:
-            print(f"[{site}] skipped (disabled).")
-            continue
-        rc |= run_site(site, config, dry_run=dry_run, state=state)
-    if not dry_run:
+    sites = [s for s in enabled_sites(config) if not state.is_disabled(s) or dry_run]
+    skipped = set(enabled_sites(config)) - set(sites)
+    for site in skipped:
+        print(f"[{site}] skipped (disabled).")
+
+    collected: list = []
+
+    def _run(site: str) -> int:
+        return run_site(site, config, dry_run=dry_run, state=state, _collect=collected)
+
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(_run, site): site for site in sites}
+        for future in as_completed(futures):
+            try:
+                rc |= future.result()
+            except Exception as exc:
+                print(f"[{futures[future]}] unhandled error: {exc}")
+                rc = 1
+
+    if dry_run:
+        print(json.dumps(collected, indent=2))
+    else:
         state.save()
     return rc
 
@@ -207,12 +229,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_getlogs(args.getlogs, config)
     if args.validate:
         return cmd_validate(args.validate)
-    if args.all or (args.dry_run and not args.site):
+    if args.all or not any([args.site, args.status, args.reset, args.getlogs, args.validate]):
         return run_all(config, dry_run=args.dry_run)
     if args.site:
         return run_site(args.site, config, dry_run=args.dry_run)
-    parser.print_help()
-    return 1
 
 
 if __name__ == "__main__":

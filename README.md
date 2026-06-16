@@ -1,6 +1,6 @@
 # myRunList Scraper
 
-A Python scraping pipeline that collects run data from multiple Hash House Harriers websites, transforms it into a standardised JSON format, and outputs it for consumption by a static site generator (SSG).
+A Python scraping pipeline that collects run data from multiple Hash House Harriers websites, transforms it into a standardised JSON format, and generates HTML and JSON output for display or downstream consumption.
 
 ## Sites
 
@@ -10,6 +10,8 @@ A Python scraping pipeline that collects run data from multiple Hash House Harri
 | `dh3` | Deepcut Hash House Harriers | Fouita widget API |
 | `gh3` | Guildford Hash House Harriers | Server-rendered HTML (EventOn) |
 | `r2d2h3` | R2D2 Hash House Harriers | Custom ASPX endpoint |
+| `hh3` | Hursley Hash House Harriers | Server-rendered HTML table |
+| `chi3` | Chichester Hash House Harriers | Server-rendered HTML table |
 
 ## Setup
 
@@ -32,17 +34,35 @@ GH3 and R2D2H3 require no API keys.
 
 ## Usage
 
+### Scraper
+
 ```bash
-python run.py --all                    # run all enabled scrapers
-python run.py --site nh4               # run a single scraper
-python run.py --dry-run --site gh3     # validate output without writing
-python run.py --status                 # show TTL state for all scrapers
-python run.py --reset dh3              # re-enable a disabled scraper
-python run.py --getlogs r2d2h3         # print scraper logs as JSON
-python run.py --validate nh4           # validate existing data/nh4.json
+python3 run.py                          # run all enabled scrapers (default)
+python3 run.py --all                    # run all enabled scrapers
+python3 run.py --site nh4               # run a single scraper
+python3 run.py --dry-run --site gh3     # validate output without writing
+python3 run.py --status                 # show TTL state for all scrapers
+python3 run.py --reset dh3              # re-enable a disabled scraper
+python3 run.py --getlogs r2d2h3         # print scraper logs as JSON
+python3 run.py --validate nh4           # validate existing data/nh4.json
 ```
 
-Output is written to `data/<name>.json`. Previous output is archived to `data/archive/<name>/` before each run.
+Scraper output is written to `data/<name>.json` (one file per site). Previous output is archived to `data/archive/<name>/` before each run.
+
+### Generator
+
+```bash
+python3 generate.py                                       # JSON to stdout (all runs, all sites)
+python3 generate.py --json output/runs.json               # JSON to file
+python3 generate.py --html output/index.html              # self-contained HTML to file
+python3 generate.py --json --html output/index.html       # both at once
+python3 generate.py --json --transform latest             # one record per kennel, future runs only
+python3 generate.py --format console --transform latest   # piped JSON for MCP
+```
+
+The generator reads from `data/*.json` and is independent of the scraper — run them on different schedules as needed.
+
+**`--transform latest`** filters out past runs and returns the next upcoming run per kennel, sorted by date. Transforms are applied before writing regardless of output format.
 
 ## Circuit breaker
 
@@ -79,7 +99,8 @@ The registry discovers scrapers automatically from `config.yaml` — no other fi
 ```
 ├── CLAUDE.md                  project spec and architecture
 ├── config.yaml                site configuration and TTL settings
-├── run.py                     CLI entry point
+├── run.py                     scraper CLI entry point
+├── generate.py                generator CLI entry point
 ├── requirements.txt
 ├── .env.example
 ├── docs/                      per-site strategy documents
@@ -95,12 +116,19 @@ The registry discovers scrapers automatically from `config.yaml` — no other fi
 │   ├── logwriter.py           structured JSON logging
 │   ├── output.py              data writing and archiving
 │   └── sites/                 one module per scraper
+├── generators/
+│   ├── transformer.py         named query transforms (e.g. latest)
+│   ├── base_writer.py         abstract writer base class
+│   └── writers/
+│       ├── json_writer.py     writes JSON to file or stdout
+│       └── html_writer.py     writes self-contained HTML to file or stdout
 ├── tests/
 │   ├── fixtures/              raw input fixtures (per site)
 │   ├── synthetic/             expected mapped output (per site)
 │   ├── test_<name>.py         per-site mapping tests
 │   └── test_framework.py      TTL, logging, archiving tests
-├── data/                      SSG output (gitignored)
+├── data/                      scraper output (gitignored)
+├── output/                    generator output (gitignored)
 ├── logs/                      structured scraper logs (gitignored)
 └── state/                     runtime TTL state (gitignored)
 ```

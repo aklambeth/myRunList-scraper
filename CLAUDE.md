@@ -18,7 +18,13 @@ Sites → Scrapers → Raw data (CSV / JSON / XML / HTML)
                           ↓
                  Archive existing output
                           ↓
-              Output JSON written to data/ for SSG
+              Output JSON written to data/ (one file per site)
+                          ↓
+               Generator reads data/*.json (independent run)
+                          ↓
+         [Optional] Transformer — e.g. --transform latest
+                          ↓
+             HTML / JSON written to output/
 ```
  
 ### Project Structure
@@ -30,7 +36,9 @@ project/
 │   ├── NH4.md
 │   ├── DH3.md
 │   ├── GH3.md
-│   └── R2D2H3.md
+│   ├── R2D2H3.md
+│   ├── HH3.md
+│   └── CHI3.md
 ├── schemas/
 │   ├── run.schema.json              ← output data contract
 │   └── log.schema.json              ← log file contract
@@ -44,7 +52,15 @@ project/
 │       ├── nh4.py
 │       ├── dh3.py
 │       ├── gh3.py
-│       └── r2d2h3.py
+│       ├── r2d2h3.py
+│       ├── hh3.py
+│       └── chi3.py
+├── generators/
+│   ├── transformer.py               ← named query transforms (e.g. latest)
+│   ├── base_writer.py               ← abstract writer base class
+│   └── writers/
+│       ├── json_writer.py           ← JSON to file or stdout
+│       └── html_writer.py           ← self-contained HTML to file or stdout
 ├── models/
 │   └── run.py                       ← Pydantic model matching run.schema.json
 ├── state/
@@ -53,10 +69,13 @@ project/
 │   └── <name>/                      ← one dir per scraper
 │       └── YYYY-MM-DD.json          ← max N files = ttl_max, oldest purged
 ├── data/
-│   ├── <name>.json                  ← current SSG output (gitignored)
+│   ├── <name>.json                  ← scraper output per site (gitignored)
 │   └── archive/
 │       └── <name>/                  ← timestamped archives (gitignored)
 │           └── <name>_<timestamp>.json
+├── output/
+│   ├── index.html                   ← generated HTML (gitignored)
+│   └── runs.json                    ← generated JSON (gitignored)
 ├── tests/
 │   ├── conftest.py                  ← shared fixtures and loaders
 │   ├── fixtures/
@@ -69,7 +88,8 @@ project/
 │   └── test_framework.py            ← TTL, logging, archiving tests
 ├── mcp/
 │   └── server.py                    ← stdio MCP interface (future)
-├── run.py                           ← CLI entry point
+├── run.py                           ← scraper CLI entry point
+├── generate.py                      ← generator CLI entry point
 ├── config.yaml                      ← site configuration
 ├── .env                             ← API keys (gitignored)
 ├── .env.example                     ← key names with empty values (committed)
@@ -249,15 +269,36 @@ Data is regenerated from scratch on each run — no merging. The SSG is responsi
  
 ## CLI
  
+### Scraper (`run.py`)
+
 ```bash
-python run.py --all                  # run all enabled scrapers
-python run.py --site <name>          # run a single scraper
-python run.py --status               # show TTL state of all scrapers
-python run.py --reset <name>         # re-enable a disabled scraper, clears logs
-python run.py --getlogs <name>       # print logs for a named scraper
-python run.py --dry-run --site <name>  # run scraper, validate output, do not write
-python run.py --validate <name>      # validate existing output JSON against schema
+python3 run.py                           # run all enabled scrapers (default)
+python3 run.py --all                     # run all enabled scrapers
+python3 run.py --site <name>             # run a single scraper
+python3 run.py --status                  # show TTL state of all scrapers
+python3 run.py --reset <name>            # re-enable a disabled scraper, clears logs
+python3 run.py --getlogs <name>          # print logs for a named scraper
+python3 run.py --dry-run --site <name>   # run scraper, validate output, do not write
+python3 run.py --validate <name>         # validate existing output JSON against schema
 ```
+
+### Generator (`generate.py`)
+
+```bash
+python3 generate.py                                     # JSON to stdout (all runs, all sites)
+python3 generate.py --json output/runs.json             # JSON to file
+python3 generate.py --html output/index.html            # self-contained HTML to file
+python3 generate.py --json --html output/index.html     # both outputs
+python3 generate.py --json --transform latest           # latest run per kennel, future only
+```
+
+`--json` and `--html` each accept an optional filename; omitting the filename writes to stdout. Not specifying either flag defaults to `--json` (stdout). `--transform` is independent of format and applies to all active writers.
+
+#### Supported transforms
+
+| Query | Behaviour |
+|---|---|
+| `latest` | Filter past runs, then return the next upcoming run per kennel sorted by date |
  
 ---
  
@@ -322,9 +363,9 @@ Per-site strategy is documented in `docs/<name>.md` and referenced here.
  
 | Scraper | Doc | Display Name |
 |---------|-----|--------------|
-| `nh4`   | [docs/NH4.md](./docs/NH4.md) | North Hampshire Hash House Harriers |
-| `dh3`   | [docs/DH3.md](./docs/DH3.md) | Deepcut Hash House Harriers |
-| `gh3`   | [docs/GH3.md](./docs/GH3.md) | Guildford Hash House Harriers |
-| `r2d2h3`   | [docs/R2D2H3.md](./docs/R2D2H3.md) | R2D2 Hash House Harriers |
-| `hh3`   | [docs/HH3.md](./docs/HH3.md) | Hursley Hash House Harriers |
-| `chi3`   | [docs/HH3.md](./docs/CHI3.md) | Chichester Hash House Harriers |
+| `nh4`    | [docs/NH4.md](./docs/NH4.md)       | North Hampshire Hash House Harriers |
+| `dh3`    | [docs/DH3.md](./docs/DH3.md)       | Deepcut Hash House Harriers |
+| `gh3`    | [docs/GH3.md](./docs/GH3.md)       | Guildford Hash House Harriers |
+| `r2d2h3` | [docs/R2D2H3.md](./docs/R2D2H3.md) | R2D2 Hash House Harriers |
+| `hh3`    | [docs/HH3.md](./docs/HH3.md)       | Hursley Hash House Harriers |
+| `chi3`   | [docs/CHI3.md](./docs/CHI3.md)     | Chichester Hash House Harriers |
