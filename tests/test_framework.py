@@ -35,7 +35,7 @@ class _StubScraper(BaseScraper):
 def _make_record(delta_days: int) -> dict:
     """Return a minimal valid run record with date offset from today."""
     run_date = (date.today() + timedelta(days=delta_days)).isoformat()
-    return {"name": "Test Run", "kennel": "stub", "runno": 1, "date": run_date, "location": {}}
+    return {"name": "Test Run", "kennel": "stub", "runno": 1, "date": run_date, "location": {"name": "Stub Pub"}}
 
 
 def test_past_records_are_filtered_out():

@@ -9,8 +9,10 @@ import sys
 from pathlib import Path
 
 from generators import transformer
+from generators.enrichment import enrich_records
 from generators.writers.html_writer import HTMLWriter
 from generators.writers.json_writer import JSONWriter
+from scrapers.state import StateStore
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 
@@ -71,6 +73,10 @@ def main(argv: list[str] | None = None) -> int:
     html_dest = Path(args.html) if args.html else None
 
     records = _load_records(_DATA_DIR)
+
+    state = StateStore()
+    records = enrich_records(records, state)
+    state.save()
 
     if args.transform:
         try:

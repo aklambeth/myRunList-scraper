@@ -22,6 +22,8 @@ Sites → Scrapers → Raw data (CSV / JSON / XML / HTML)
                           ↓
                Generator reads data/*.json (independent run)
                           ↓
+         Enrichment — W3W → lat/lng (cache-first, scrape as last resort)
+                          ↓
          [Optional] Transformer — e.g. --transform latest
                           ↓
              HTML / JSON written to output/
@@ -56,6 +58,7 @@ project/
 │       ├── hh3.py
 │       └── chi3.py
 ├── generators/
+│   ├── enrichment.py                ← post-processing: Google Maps URL → W3W lat/lng fallback
 │   ├── transformer.py               ← named query transforms (e.g. latest)
 │   ├── base_writer.py               ← abstract writer base class
 │   └── writers/
@@ -302,6 +305,32 @@ python3 generate.py --json --transform latest           # latest run per kennel,
  
 ---
  
+## Location Enrichment
+
+Run by `generate.py` as a post-processing step after loading scraped data, before writing output. Populates `location.lat` / `location.lng` on records where the scraper did not supply coordinates.
+
+### Enrichment chain (per record)
+
+```
+lat + lng already present? → skip
+↓
+location.w3s present?
+    → check cache (data/w3w_cache.json) → hit: use it
+                                        → miss: scrape what3words.com → populate lat/lng, write cache
+```
+
+### W3W workaround
+
+What Three Words does not offer a free API. As a workaround, `generators/enrichment.py` scrapes `https://what3words.com/<word>.<word>.<word>` directly using a spoofed browser `User-Agent`, then extracts `lat=` / `lng=` values from a minimap image URL embedded in the page HTML.
+
+**This is a best-effort scrape, not an official API.** It may break if W3W changes their page structure. A TTL circuit breaker (`ttl_max=5`, `−2` per error, state key `"enrich_w3w"` in `state/state.json`) disables the step automatically on repeated failures and logs a `WARNING`.
+
+### W3W cache (`data/w3w_cache.json`)
+
+Results are cached indefinitely (up to 1000 entries, FIFO eviction). Cache is always checked before making an HTTP request. Concurrent-write safety is handled with `fcntl.flock()` + atomic `os.replace()`. Cache file is gitignored.
+
+---
+
 ## MCP Interface (Future)
  
 A stdio MCP server will be implemented in `mcp/server.py` exposing the following tools for LLM access:
