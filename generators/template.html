@@ -5,12 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>myRunList</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
   <style>
     [v-cloak] { display: none; }
   </style>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (stored === 'dark' || (!stored && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen p-6">
-  <h1 class="text-2xl font-bold mb-6">Upcoming Runs</h1>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Upcoming Runs</h1>
+    <button id="theme-toggle" aria-label="Toggle dark mode"
+      class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+      <!-- sun icon (shown in dark mode) -->
+      <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 7a5 5 0 1 0 0 10A5 5 0 0 0 12 7z"/>
+      </svg>
+      <!-- moon icon (shown in light mode) -->
+      <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+      </svg>
+    </button>
+  </div>
 
   <div id="app" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" v-cloak>
 
@@ -19,12 +42,12 @@
     </p>
 
     <template v-for="r in runs" :key="r.runno">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col gap-2">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 flex flex-col gap-2">
 
         <div class="flex items-start justify-between gap-2">
           <div>
             <p class="font-semibold text-lg leading-tight">{{ r.name }}</p>
-            <p class="text-gray-500 text-sm">Run #{{ r.runno }}</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Run #{{ r.runno }}</p>
           </div>
           <div v-if="r.website">
             <a :href="r.website" target="_blank" rel="noopener"
@@ -32,7 +55,7 @@
           </div>
         </div>
 
-        <div class="text-sm text-gray-700 flex flex-col gap-1">
+        <div class="text-sm text-gray-700 dark:text-gray-300 flex flex-col gap-1">
           <p><span class="font-medium">Date:</span> {{ r.date }}<span v-if="r.time"> at {{ r.time }}</span></p>
 
           <p v-if="r.locationStr || r.mapsUrl">
@@ -45,19 +68,19 @@
 
           <div v-if="r.w3s || r.wazeUrl" class="flex items-center gap-3">
             <a v-if="r.w3s" :href="`https://what3words.com/${r.w3s}`" target="_blank" rel="noopener"
-               class="flex items-center gap-1 text-gray-500 text-xs hover:underline">
+               class="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs hover:underline">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 146.2725 146.2725" class="w-4 h-4 shrink-0"><defs><style>.cls-1{fill:#e11f26;}.cls-2{fill:#fff;}.cls-3{fill:none;}</style></defs><g><g><path class="cls-1" d="M117.0206,29.2522H29.2549v87.7656h87.7657V29.2522Z"/><path class="cls-2" d="M67.6525,92.3346a2.7455,2.7455,0,0,1-2.602-3.61L76.0212,55.812a2.7429,2.7429,0,0,1,5.2041,1.7356L70.2546,90.46A2.7429,2.7429,0,0,1,67.6525,92.3346Z"/><path class="cls-2" d="M51.1965,92.3346a2.7456,2.7456,0,0,1-2.6021-3.61L59.5651,55.812a2.743,2.743,0,0,1,5.2042,1.7356L53.7985,90.46A2.7429,2.7429,0,0,1,51.1965,92.3346Z"/><path class="cls-2" d="M84.1086,92.3346a2.7456,2.7456,0,0,1-2.6021-3.61L92.4772,55.812a2.743,2.743,0,0,1,5.2042,1.7356L86.7107,90.46A2.743,2.743,0,0,1,84.1086,92.3346Z"/><rect class="cls-3" width="146.2725" height="146.2725"/></g></g></svg>
               ///{{ r.w3s }}
             </a>
             <a v-if="r.wazeUrl" :href="r.wazeUrl" target="_blank" rel="noopener"
-               class="flex items-center gap-1 text-gray-500 text-xs hover:underline">
+               class="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs hover:underline">
               <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.71 122.88" class="w-4 h-4 shrink-0 rounded" style="background:#33ccff"><style type="text/css">.wst0{fill:#FFFFFF;}</style><g><path class="wst0" d="M55.14,104.21c4.22,0,8.44,0.19,12.66-0.09c3.84-0.19,7.88-0.56,11.63-1.5c29.82-7.31,45.76-40.23,32.72-68.07C104.27,17.76,90.77,8.19,72.3,6.22c-14.16-1.5-26.82,2.72-37.51,12.28c-10.5,9.47-15.94,21.28-16.31,35.44c-0.09,3.28,0,6.66,0,9.94C18.38,71.02,14.35,76.55,7.5,78.7c-0.09,0-0.28,0.19-0.38,0.19c2.63,6.94,13.31,17.16,19.97,19.69C35.45,87.14,52.32,91.18,55.14,104.21z"/><path d="M54.95,110.49c-1.03,4.69-3.56,8.16-7.69,10.31c-5.25,2.72-10.6,2.63-15.57-0.56c-5.16-3.28-7.41-8.25-7.03-14.35c0.09-1.03-0.19-1.41-1.03-1.88c-9.1-4.78-16.31-11.44-21.28-20.44c-0.94-1.78-1.69-3.66-2.16-5.63c-0.66-2.72,0.38-4.03,3.19-4.31c3.38-0.38,6.38-1.69,7.88-4.88c0.66-1.41,1.03-3.09,1.03-4.69c0.19-4.03,0-8.06,0.19-12.1c1.03-15.57,7.5-28.5,19.32-38.63C42.67,3.97,55.42-0.43,69.76,0.03c25.04,0.94,46.51,18.57,51.57,43.23c4.59,22.32-2.34,40.98-20.07,55.51c-1.03,0.84-2.16,1.69-3.38,2.44c-0.66,0.47-0.84,0.84-0.56,1.59c2.34,7.13-0.94,15-7.5,18.38c-8.91,4.41-19.22-0.09-21.94-9.66c-0.09-0.38-0.56-0.84-0.84-0.84C63.11,110.4,59.07,110.49,54.95,110.49z M55.14,104.21c4.22,0,8.44,0.19,12.66-0.09c3.84-0.19,7.88-0.56,11.63-1.5c29.82-7.31,45.76-40.23,32.72-68.07C104.27,17.76,90.77,8.19,72.3,6.22c-14.16-1.5-26.82,2.72-37.51,12.28c-10.5,9.47-15.94,21.28-16.31,35.44c-0.09,3.28,0,6.66,0,9.94C18.38,71.02,14.35,76.55,7.5,78.7c-0.09,0-0.28,0.19-0.38,0.19c2.63,6.94,13.31,17.16,19.97,19.69C35.45,87.14,52.32,91.18,55.14,104.21z"/><path d="M74.92,79.74c-11.07-0.56-18.38-4.97-23.07-13.78c-1.13-2.16-0.09-4.31,2.06-4.78c1.31-0.28,2.53,0.66,3.47,2.16c1.22,1.88,2.44,3.75,4.03,5.25c8.81,8.34,23.25,5.72,28.79-5.06c0.66-1.31,1.5-2.34,3.09-2.34c2.34,0.09,3.66,2.44,2.63,4.59c-2.91,5.91-7.5,10.22-13.69,12.28C79.51,78.99,76.7,79.36,74.92,79.74z"/><path d="M55.32,48.98c-3.38,0-6.09-2.72-6.09-6.09s2.72-6.09,6.09-6.09s6.09,2.72,6.09,6.09C61.42,46.17,58.7,48.98,55.32,48.98z"/><path d="M98.27,42.79c0,3.38-2.72,6.09-6,6.19c-3.38,0-6.09-2.63-6.09-6.09c0-3.38,2.63-6.09,6-6.19C95.46,36.7,98.17,39.42,98.27,42.79z"/></g></svg>
               Waze
             </a>
           </div>
           <p v-if="r.oninn"><span class="font-medium">On-in:</span> {{ r.oninn }}</p>
           <p v-if="r.haresStr"><span class="font-medium">Hares:</span> {{ r.haresStr }}</p>
-          <p v-if="r.notes" class="text-gray-500 text-xs mt-1">{{ r.notes }}</p>
+          <p v-if="r.notes" class="text-gray-500 dark:text-gray-400 text-xs mt-1">{{ r.notes }}</p>
         </div>
 
       </div>
@@ -97,6 +120,13 @@
       });
 
     createApp({ runs }).mount('#app');
+  </script>
+
+  <script>
+    document.getElementById('theme-toggle').addEventListener('click', function () {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
   </script>
 </body>
 </html>
