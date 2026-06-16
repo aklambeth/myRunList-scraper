@@ -12,3 +12,4 @@ tests/synthetic/**/output.json
 .venv/
 venv/
 .DS_Store
+myRunList-scraper.code-workspace

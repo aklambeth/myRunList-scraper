@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
+from datetime import date
 from enum import Enum
 from pathlib import Path
 
@@ -57,6 +58,7 @@ class BaseScraper(ABC):
     url: str | None = None
     method: str = "GET"
     timeout: int = 10
+    request_headers: dict = {}
 
     _validator = None
 
@@ -81,10 +83,11 @@ class BaseScraper(ABC):
         metadata on ``self.last_request`` / ``self.last_response``.
         """
         url = self.build_url()
-        self.last_request = {"url": url, "method": self.method, "headers": {}}
+        self.last_request = {"url": url, "method": self.method, "headers": self.request_headers}
         try:
             resp = requests.request(
-                self.method, url, timeout=self.timeout, allow_redirects=True
+                self.method, url, headers=self.request_headers,
+                timeout=self.timeout, allow_redirects=True,
             )
         except requests.RequestException as exc:
             raise ScraperException(
@@ -139,9 +142,12 @@ class BaseScraper(ABC):
 
     # -------------------------------------------------------------------- run
     def run(self) -> list[dict]:
-        """fetch -> map -> validate. Returns validated records."""
+        """fetch -> map -> filter past -> validate. Returns validated records."""
         raw = self.fetch()
         records = self.map(raw)
+        today = date.today().isoformat()
+        records = [r for r in records if r.get("date", "") >= today]
+        records = [r for r in records if r.get("location")]
         for record in records:
             self.validate(record)
         return records
