@@ -34,11 +34,19 @@ def _writers(config: dict) -> tuple[LogWriter, OutputWriter]:
     return log_writer, output_writer
 
 
-def run_site(site: str, config: dict, *, dry_run: bool = False) -> int:
+def run_site(
+    site: str,
+    config: dict,
+    *,
+    dry_run: bool = False,
+    state: StateStore | None = None,
+) -> int:
     """Run a single scraper. Returns process-style exit code (0 ok)."""
     cfg = site_config(site, config)
     ttl_max = cfg["ttl_max"]
-    state = StateStore()
+    _owns_state = state is None
+    if _owns_state:
+        state = StateStore()
     log_writer, output_writer = _writers(config)
 
     if state.is_disabled(site) and not dry_run:
@@ -69,6 +77,8 @@ def run_site(site: str, config: dict, *, dry_run: bool = False) -> int:
             request=scraper.last_request,
             response=scraper.last_response,
         )
+        if _owns_state:
+            state.save()
         disabled = " — SCRAPER DISABLED" if new_entry["ttl_current"] == 0 else ""
         print(
             f"[{site}] FAILURE ({exc.mode.name}): TTL {ttl_before} -> "
@@ -83,6 +93,8 @@ def run_site(site: str, config: dict, *, dry_run: bool = False) -> int:
 
     output_writer.write(site, records)
     new_entry = state.record_success(site, ttl_max)
+    if _owns_state:
+        state.save()
     log_writer.write(
         site=site,
         version=scraper.version,
@@ -98,13 +110,16 @@ def run_site(site: str, config: dict, *, dry_run: bool = False) -> int:
     return 0
 
 
-def run_all(config: dict) -> int:
+def run_all(config: dict, *, dry_run: bool = False) -> int:
     rc = 0
+    state = StateStore()
     for site in enabled_sites(config):
-        if StateStore().is_disabled(site):
+        if state.is_disabled(site) and not dry_run:
             print(f"[{site}] skipped (disabled).")
             continue
-        rc |= run_site(site, config)
+        rc |= run_site(site, config, dry_run=dry_run, state=state)
+    if not dry_run:
+        state.save()
     return rc
 
 
@@ -133,6 +148,7 @@ def cmd_reset(site: str, config: dict) -> int:
     cfg = site_config(site, config)
     state = StateStore()
     state.reset(site, cfg["ttl_max"])
+    state.save()
     LogWriter(
         max_body_size_bytes=config["logging"]["max_body_size_bytes"]
     ).clear(site)
@@ -171,14 +187,14 @@ def cmd_validate(site: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     parser = argparse.ArgumentParser(description="Hash scraper pipeline")
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--all", action="store_true", help="run all enabled scrapers")
     group.add_argument("--site", metavar="NAME", help="run a single scraper")
     group.add_argument("--status", action="store_true", help="show TTL state")
     group.add_argument("--reset", metavar="NAME", help="re-enable a scraper, clear logs")
     group.add_argument("--getlogs", metavar="NAME", help="print logs for a scraper")
     group.add_argument("--validate", metavar="NAME", help="validate existing output")
-    parser.add_argument("--dry-run", action="store_true", help="run + validate, no write")
+    parser.add_argument("--dry-run", action="store_true", help="run + validate, no write (defaults to --all)")
     args = parser.parse_args(argv)
 
     config = load_config()
@@ -191,10 +207,11 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_getlogs(args.getlogs, config)
     if args.validate:
         return cmd_validate(args.validate)
-    if args.all:
-        return run_all(config)
+    if args.all or (args.dry_run and not args.site):
+        return run_all(config, dry_run=args.dry_run)
     if args.site:
         return run_site(args.site, config, dry_run=args.dry_run)
+    parser.print_help()
     return 1
 
 

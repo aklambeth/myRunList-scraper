@@ -24,7 +24,7 @@ class StateStore:
         else:
             self._data = {}
 
-    def _save(self) -> None:
+    def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.path, "w", encoding="utf-8") as fh:
             json.dump(self._data, fh, indent=2, sort_keys=True)
@@ -55,7 +55,6 @@ class StateStore:
         entry["ttl_current"] = ttl_max
         entry["last_success"] = date.today().isoformat()
         entry["disabled_at"] = None
-        self._save()
         return entry
 
     def record_failure(self, site: str, ttl_max: int, mode: FailureMode) -> dict:
@@ -71,7 +70,6 @@ class StateStore:
         entry["last_failure"] = date.today().isoformat()
         if after == 0:
             entry["disabled_at"] = date.today().isoformat()
-        self._save()
         return entry
 
     def reset(self, site: str, ttl_max: int) -> dict:
@@ -79,5 +77,4 @@ class StateStore:
         entry = self._entry(site, ttl_max)
         entry["ttl_current"] = ttl_max
         entry["disabled_at"] = None
-        self._save()
         return entry

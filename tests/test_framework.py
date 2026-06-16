@@ -1,8 +1,10 @@
 import json
+from datetime import date, timedelta
+from unittest.mock import patch
 
 import pytest
 
-from scrapers.base import FailureMode
+from scrapers.base import BaseScraper, FailureMode, ScraperException
 from scrapers.logwriter import LogWriter
 from scrapers.output import OutputWriter
 from scrapers.state import StateStore
@@ -13,6 +15,72 @@ TTL_MAX = 5
 @pytest.fixture
 def state(tmp_path):
     return StateStore(path=tmp_path / "state.json")
+
+
+class _StubScraper(BaseScraper):
+    name = "stub"
+    version = "1.0.0"
+
+    def __init__(self, records):
+        super().__init__()
+        self._records = records
+
+    def fetch(self):
+        return ""
+
+    def map(self, raw):
+        return list(self._records)
+
+
+def _make_record(delta_days: int) -> dict:
+    """Return a minimal valid run record with date offset from today."""
+    run_date = (date.today() + timedelta(days=delta_days)).isoformat()
+    return {"name": "Test Run", "kennel": "stub", "runno": 1, "date": run_date, "location": {}}
+
+
+def test_past_records_are_filtered_out():
+    scraper = _StubScraper([_make_record(-1)])
+    records = scraper.run()
+    assert records == []
+
+
+def test_future_records_are_kept():
+    future = _make_record(1)
+    scraper = _StubScraper([future])
+    records = scraper.run()
+    assert records == [future]
+
+
+def test_today_record_is_kept():
+    today = _make_record(0)
+    scraper = _StubScraper([today])
+    records = scraper.run()
+    assert records == [today]
+
+
+def test_empty_location_is_filtered_out():
+    record = _make_record(1)
+    record["location"] = {}
+    scraper = _StubScraper([record])
+    assert scraper.run() == []
+
+
+def test_non_empty_location_is_kept():
+    record = _make_record(1)
+    record["location"] = {"name": "Somewhere"}
+    scraper = _StubScraper([record])
+    assert scraper.run() == [record]
+
+
+def test_mixed_dates_only_future_returned():
+    past = _make_record(-7)
+    today = _make_record(0)
+    future = _make_record(7)
+    scraper = _StubScraper([past, today, future])
+    records = scraper.run()
+    assert past not in records
+    assert today in records
+    assert future in records
 
 
 def test_transient_decrements_by_one(state):
@@ -61,7 +129,9 @@ def test_reset_reenables(state):
 
 def test_state_persists_across_instances(tmp_path):
     path = tmp_path / "state.json"
-    StateStore(path=path).record_success("nh4", TTL_MAX)
+    s = StateStore(path=path)
+    s.record_success("nh4", TTL_MAX)
+    s.save()
     assert StateStore(path=path).get("nh4")["ttl_current"] == TTL_MAX
 
 
