@@ -1,8 +1,10 @@
 .env
 state/
 data/*.json
+data/*.lock
 data/archive/
 logs/
+output/*
 __pycache__/
 *.pyc
 *.pyo
@@ -12,4 +14,3 @@ tests/synthetic/**/output.json
 .venv/
 venv/
 .DS_Store
-myRunList-scraper.code-workspace

@@ -193,6 +193,6 @@ class NH4Scraper(BaseScraper):
             hares=parse_hares(cell("hares")),
             oninn=oninn if oninn and not _is_placeholder(oninn) else None,
             notes=notes or None,
-            website=None,
+            website="https://www.nh4.org/",
         )
         return run.to_record()
