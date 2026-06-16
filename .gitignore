@@ -1,0 +1,14 @@
+.env
+state/
+data/*.json
+data/archive/
+logs/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+tests/synthetic/**/output.json
+.pytest_cache/
+.venv/
+venv/
+.DS_Store

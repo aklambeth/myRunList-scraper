@@ -1,0 +1,34 @@
+logging:
+  max_body_size_bytes: 10240
+
+data:
+  archive_retention_days: 365
+
+sites:
+  nh4:
+    name: "nh4"
+    display_name: "North Hampshire Hash House Harriers"
+    scraper: NH4Scraper
+    ttl_max: 5
+    enabled: true
+
+  dh3:
+    name: "dh3"
+    display_name: "Deepcut Hash House Harriers"
+    scraper: DH3Scraper
+    ttl_max: 5
+    enabled: true
+
+  gh3:
+    name: "gh3"
+    display_name: "Guildford Hash House Harriers"
+    scraper: GH3Scraper
+    ttl_max: 5
+    enabled: true
+
+  r2d2h3:
+    name: "r2d2h3"
+    display_name: "R2D2 Hash House Harriers"
+    scraper: R2D2H3Scraper
+    ttl_max: 5
+    enabled: true

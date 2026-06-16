@@ -1,0 +1,7 @@
+requests>=2.31
+beautifulsoup4>=4.12
+pydantic>=2.5
+jsonschema>=4.21
+pyyaml>=6.0
+python-dotenv>=1.0
+pytest>=8.0
