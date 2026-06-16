@@ -128,6 +128,7 @@ class R2D2H3Scraper(BaseScraper):
 
             run = Run(
                 name=DISPLAY_NAME,
+                kennel=self.name,
                 runno=runno,
                 date=date,
                 location=Location(**loc_fields),

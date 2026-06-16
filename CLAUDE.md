@@ -124,7 +124,8 @@ Defined in `schemas/run.schema.json`. All scrapers must produce output conformin
  
 | Field      | Type             | Required | Notes                                      |
 |------------|------------------|----------|--------------------------------------------|
-| `name`     | string           | Yes      | Name of the run event                      |
+| `name`     | string           | Yes      | Display name of the hash club              |
+| `kennel`   | string           | Yes      | Short identifier matching config.yaml key  |
 | `runno`    | positive integer | Yes      | Run number                                 |
 | `date`     | date string      | Yes      | ISO 8601 format `YYYY-MM-DD`               |
 | `time`     | time string      | No       | ISO 8601 format `HH:MM`                    |
@@ -325,3 +326,5 @@ Per-site strategy is documented in `docs/<name>.md` and referenced here.
 | `dh3`   | [docs/DH3.md](./docs/DH3.md) | Deepcut Hash House Harriers |
 | `gh3`   | [docs/GH3.md](./docs/GH3.md) | Guildford Hash House Harriers |
 | `r2d2h3`   | [docs/R2D2H3.md](./docs/R2D2H3.md) | R2D2 Hash House Harriers |
+| `hh3`   | [docs/HH3.md](./docs/HH3.md) | Hursley Hash House Harriers |
+| `chi3`   | [docs/HH3.md](./docs/CHI3.md) | Chichester Hash House Harriers |

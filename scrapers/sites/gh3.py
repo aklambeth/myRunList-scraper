@@ -14,6 +14,7 @@ import re
 from datetime import datetime
 from urllib.parse import parse_qs, unquote, urlparse
 
+import requests
 from bs4 import BeautifulSoup
 
 from models.run import W3S_PATTERN, Location, Run
@@ -44,7 +45,8 @@ def parse_title(title: str) -> dict | None:
     result: dict = {"runno": int(m.group(1))}
     remainder = m.group(2)
     parts = remainder.split(" - ", maxsplit=1)
-    result["hare"] = parts[0].strip()
+    hare_str = parts[0].strip()
+    result["hares"] = [h.strip() for h in hare_str.split("/") if h.strip()]
     if len(parts) > 1:
         loc = parts[1].strip()
         pc_match = re.search(r"\(([A-Z]{1,2}\d{1,2}\s*\d[A-Z]{2})\)\s*$", loc)
@@ -68,7 +70,22 @@ def parse_w3s(description_html: str | None) -> str | None:
     return None
 
 
-def parse_latlng(description_html: str | None):
+def expand_gmaps_short_url(url: str) -> str | None:
+    try:
+        r = requests.head(url, allow_redirects=True, timeout=5)
+        return r.url
+    except requests.RequestException:
+        return None
+
+
+def parse_latlng_from_gmaps_url(url: str):
+    m = re.search(r"/@(-?\d+\.\d+),(-?\d+\.\d+),", url)
+    if m:
+        return float(m.group(1)), float(m.group(2))
+    return None, None
+
+
+def parse_latlng(description_html: str | None, url_expander=expand_gmaps_short_url):
     if not description_html:
         return None, None
     soup = BeautifulSoup(description_html, "html.parser")
@@ -83,6 +100,13 @@ def parse_latlng(description_html: str | None):
                         return float(parts[0]), float(parts[1])
                     except ValueError:
                         pass
+    for a in soup.find_all("a", href=True):
+        if "maps.app.goo.gl" in a["href"]:
+            expanded = url_expander(a["href"])
+            if expanded:
+                lat, lng = parse_latlng_from_gmaps_url(expanded)
+                if lat is not None:
+                    return lat, lng
     return None, None
 
 
@@ -155,11 +179,12 @@ class GH3Scraper(BaseScraper):
 
         run = Run(
             name=DISPLAY_NAME,
+            kennel=self.name,
             runno=parsed["runno"],
             date=dt.strftime("%Y-%m-%d"),
             time=dt.strftime("%H:%M"),
             location=Location(**loc_fields),
-            hares=[parsed["hare"]] if parsed.get("hare") else None,
+            hares=parsed["hares"] if parsed.get("hares") else None,
             website=ld.get("url") or None,
         )
         return run.to_record()

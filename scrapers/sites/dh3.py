@@ -153,6 +153,7 @@ class DH3Scraper(BaseScraper):
 
         run = Run(
             name=DISPLAY_NAME,
+            kennel=self.name,
             runno=runno,
             date=dt.strftime("%Y-%m-%d"),
             time=dt.strftime("%H:%M"),

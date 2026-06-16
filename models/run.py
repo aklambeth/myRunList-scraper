@@ -32,6 +32,7 @@ class Run(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
+    kennel: str
     runno: int = Field(gt=0)
     date: str = Field(pattern=DATE_PATTERN)
     time: Optional[str] = Field(default=None, pattern=TIME_PATTERN)

@@ -4,11 +4,15 @@
   "title": "Run",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "runno", "date", "location"],
+  "required": ["name", "kennel", "runno", "date", "location"],
   "properties": {
     "name": {
       "type": "string",
-      "description": "Name of the run event"
+      "description": "Display name of the hash club"
+    },
+    "kennel": {
+      "type": "string",
+      "description": "Short identifier for the hash club (matches config.yaml key)"
     },
     "runno": {
       "type": "integer",
