@@ -207,7 +207,7 @@ def cmd_validate(site: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_dotenv()
+    load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Hash scraper pipeline")
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--all", action="store_true", help="run all enabled scrapers")

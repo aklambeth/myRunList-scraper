@@ -2,6 +2,9 @@
   "name": "Python + Node.js",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
 
+  "initializeCommand": "test -f ${localWorkspaceFolder}/.env || cp ${localWorkspaceFolder}/.env.example ${localWorkspaceFolder}/.env",
+  "runArgs": ["--env-file", "${localWorkspaceFolder}/.env"],
+
  "secrets": {
     "NH4_API_KEY": {
       "description": "gid of the published Google Sheet tab"
