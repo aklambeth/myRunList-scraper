@@ -154,20 +154,26 @@ def get_logs(site: str) -> list[dict]:
 
 
 @mcp.tool()
-def run_scraper(site: str) -> dict:
+def run_scraper(site: str, dry_run: bool = False) -> dict:
     """Trigger a named scraper on demand.
 
-    Runs the full fetch → map → validate → write pipeline. Returns success
-    status, the number of records written, and any output message. If the
-    scraper is disabled by the circuit breaker, use reset_scraper first.
+    Runs the full fetch → map → validate pipeline. When dry_run=False (default)
+    also writes output and updates TTL state. When dry_run=True, validates output
+    but does not write data files or update state. If the scraper is disabled by
+    the circuit breaker, use reset_scraper first (dry_run bypasses this check).
     """
     import run as run_module
     config = _load_config()
     buf = io.StringIO()
+    if dry_run:
+        collect: list[dict] = []
+        with redirect_stdout(buf):
+            rc = run_module.run_site(site, config, dry_run=True, _collect=collect)
+        message = buf.getvalue().strip() or f"[{site}] dry-run OK: {len(collect)} records validated, nothing written."
+        return {"success": rc == 0, "records": len(collect), "message": message}
     with redirect_stdout(buf):
         rc = run_module.run_site(site, config)
     message = buf.getvalue().strip()
-    # count records from output file if successful
     records_written = 0
     if rc == 0:
         import json
@@ -178,6 +184,48 @@ def run_scraper(site: str) -> dict:
             except Exception:
                 pass
     return {"success": rc == 0, "records": records_written, "message": message}
+
+
+@mcp.tool()
+def run_all_scrapers(dry_run: bool = False) -> dict:
+    """Trigger all enabled scrapers on demand.
+
+    Runs every enabled scraper concurrently. When dry_run=False (default) writes
+    output and updates TTL state for each site. When dry_run=True, validates
+    output but does not write data files or update state. Returns a per-site
+    result list and a top-level all_succeeded flag.
+    """
+    import run as run_module
+    from scrapers.registry import all_sites
+    config = _load_config()
+    sites = [s for s in all_sites(config) if config["sites"][s].get("enabled", True)]
+    results = []
+    all_succeeded = True
+    for site in sites:
+        buf = io.StringIO()
+        if dry_run:
+            collect: list[dict] = []
+            with redirect_stdout(buf):
+                rc = run_module.run_site(site, config, dry_run=True, _collect=collect)
+            message = buf.getvalue().strip() or f"[{site}] dry-run OK: {len(collect)} records validated, nothing written."
+            results.append({"site": site, "success": rc == 0, "records": len(collect), "message": message})
+        else:
+            with redirect_stdout(buf):
+                rc = run_module.run_site(site, config)
+            message = buf.getvalue().strip()
+            records_written = 0
+            if rc == 0:
+                import json
+                out_path = _DATA_DIR / f"{site}.json"
+                if out_path.exists():
+                    try:
+                        records_written = len(json.loads(out_path.read_text(encoding="utf-8")))
+                    except Exception:
+                        pass
+            results.append({"site": site, "success": rc == 0, "records": records_written, "message": message})
+        if rc != 0:
+            all_succeeded = False
+    return {"all_succeeded": all_succeeded, "results": results}
 
 
 # ---------------------------------------------------------------------------

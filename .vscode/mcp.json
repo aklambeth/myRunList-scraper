@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "myRunList": {
+      "type": "stdio",
+      "command": ".venv/bin/python",
+      "args": ["-m", "mcpserver.server"]
+    }
+  }
+}
