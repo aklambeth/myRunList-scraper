@@ -14,3 +14,5 @@ tests/synthetic/**/output.json
 .venv/
 venv/
 .DS_Store
+.devcontainer/devcontainer-lock.json
+uv.lock

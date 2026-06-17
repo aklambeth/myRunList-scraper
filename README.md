@@ -57,12 +57,33 @@ python3 generate.py --json output/runs.json               # JSON to file
 python3 generate.py --html output/index.html              # self-contained HTML to file
 python3 generate.py --json --html output/index.html       # both at once
 python3 generate.py --json --transform latest             # one record per kennel, future runs only
-python3 generate.py --format console --transform latest   # piped JSON for MCP
+python3 generate.py --json --transform latest             # one record per kennel, piped JSON
 ```
 
 The generator reads from `data/*.json` and is independent of the scraper — run them on different schedules as needed.
 
 **`--transform latest`** filters out past runs and returns the next upcoming run per kennel, sorted by date. Transforms are applied before writing regardless of output format.
+
+### MCP server
+
+```bash
+python -m mcpserver.server   # start stdio MCP server
+```
+
+The MCP server exposes the pipeline as tools for LLM access. Requires Python ≥ 3.10.
+
+| Tool | Description |
+|------|-------------|
+| `get_runs` | Query scraped records by site and/or date range |
+| `get_scraper_status` | TTL state and config for a named scraper |
+| `get_all_scraper_status` | Status overview of all scrapers |
+| `get_logs` | Structured logs for a named scraper |
+| `run_scraper` | Trigger a named scraper on demand |
+| `generate_json` | Run data as JSON (default: latest run per kennel) |
+| `generate_html` | Self-contained HTML (default: latest run per kennel) |
+| `reset_scraper` | Re-enable a circuit-breaker-disabled scraper |
+| `set_scraper_enabled` | Toggle a scraper on/off in `config.yaml` |
+| `set_scraper_ttl_max` | Set TTL max for a scraper in `config.yaml` |
 
 ## Circuit breaker
 
@@ -122,11 +143,14 @@ The registry discovers scrapers automatically from `config.yaml` — no other fi
 │   └── writers/
 │       ├── json_writer.py     writes JSON to file or stdout
 │       └── html_writer.py     writes self-contained HTML to file or stdout
+├── mcpserver/
+│   └── server.py              stdio MCP server (9 tools)
 ├── tests/
 │   ├── fixtures/              raw input fixtures (per site)
 │   ├── synthetic/             expected mapped output (per site)
 │   ├── test_<name>.py         per-site mapping tests
-│   └── test_framework.py      TTL, logging, archiving tests
+│   ├── test_framework.py      TTL, logging, archiving tests
+│   └── test_mcpserver.py      MCP tool logic tests
 ├── data/                      scraper output (gitignored)
 ├── output/                    generator output (gitignored)
 ├── logs/                      structured scraper logs (gitignored)

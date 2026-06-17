@@ -89,8 +89,8 @@ project/
 │   │       └── output.json          ← expected mapped output for unit tests
 │   ├── test_<name>.py
 │   └── test_framework.py            ← TTL, logging, archiving tests
-├── mcp/
-│   └── server.py                    ← stdio MCP interface (future)
+├── mcpserver/
+│   └── server.py                    ← stdio MCP interface
 ├── run.py                           ← scraper CLI entry point
 ├── generate.py                      ← generator CLI entry point
 ├── config.yaml                      ← site configuration
@@ -331,17 +331,34 @@ Results are cached indefinitely (up to 1000 entries, FIFO eviction). Cache is al
 
 ---
 
-## MCP Interface (Future)
- 
-A stdio MCP server will be implemented in `mcp/server.py` exposing the following tools for LLM access:
- 
-| Tool                   | Description                                      |
-|------------------------|--------------------------------------------------|
-| `get_runs`             | Query output JSON by site or date range          |
-| `get_scraper_status`   | TTL state and last run info for a named scraper  |
-| `get_all_scraper_status` | Status overview of all scrapers                |
-| `get_logs`             | Retrieve logs for a named scraper                |
-| `run_scraper`          | Trigger a named scraper on demand                |
+## MCP Interface
+
+A stdio MCP server implemented in `mcpserver/server.py` using the `mcp` SDK (Python ≥ 3.10 required). Run with `python -m mcpserver.server`.
+
+### Scraper tools
+
+| Tool                     | Description                                                   |
+|--------------------------|---------------------------------------------------------------|
+| `get_runs`               | Query scraped records by site and/or date range               |
+| `get_scraper_status`     | TTL state and config for a named scraper                      |
+| `get_all_scraper_status` | Status overview of all scrapers                               |
+| `get_logs`               | Retrieve structured logs for a named scraper (newest first)   |
+| `run_scraper`            | Trigger a named scraper on demand                             |
+
+### Generate tools
+
+| Tool            | Description                                                                    |
+|-----------------|--------------------------------------------------------------------------------|
+| `generate_json` | Return run data as JSON. Default: `latest` transform. `all_runs=True` for all. |
+| `generate_html` | Return self-contained HTML as a string. Same `all_runs` flag.                  |
+
+### Config management tools
+
+| Tool                  | Description                                                               |
+|-----------------------|---------------------------------------------------------------------------|
+| `reset_scraper`       | Re-enable a circuit-breaker-disabled scraper, clears logs                 |
+| `set_scraper_enabled` | Toggle `enabled` in `config.yaml` (persists across restarts)              |
+| `set_scraper_ttl_max` | Set `ttl_max` in `config.yaml`                                            |
  
 ---
  

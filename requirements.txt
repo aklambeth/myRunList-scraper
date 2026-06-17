@@ -5,3 +5,4 @@ jsonschema>=4.21
 pyyaml>=6.0
 python-dotenv>=1.0
 pytest>=8.0
+mcp[cli]>=1.0
