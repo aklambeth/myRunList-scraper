@@ -8,9 +8,13 @@ import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import logging
+
 import yaml
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+
+logging.getLogger("mcp").setLevel(logging.WARNING)
 
 load_dotenv(override=True)
 
