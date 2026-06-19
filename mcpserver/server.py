@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 logging.getLogger("mcp").setLevel(logging.WARNING)
+logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
 
 load_dotenv(override=True)
 
@@ -96,9 +97,18 @@ def get_runs(
 def get_scraper_status(site: str) -> dict:
     """Return TTL state and config for a single scraper by site key.
 
-    Returns a dict combining runtime state (ttl_current, last_success,
-    last_failure, disabled_at) with config values (ttl_max, display_name, enabled).
-    Returns null state fields for scrapers that have never run.
+    Returns a dict combining runtime state with config values. State fields are
+    null for scrapers that have never run.
+
+    Fields:
+      site          — site key (e.g. "nh4")
+      display_name  — human-readable club name
+      enabled       — whether the scraper is included in scheduled runs
+      ttl_max       — failure tolerance before circuit breaker disables the scraper
+      ttl_current   — remaining TTL (null if never run)
+      last_success  — ISO 8601 date of last successful scrape (null if never run)
+      last_failure  — ISO 8601 date of last failure (null if no failures)
+      disabled_at   — ISO 8601 date the scraper was disabled (null if active)
     """
     from scrapers.state import StateStore
     config = _load_config()
@@ -112,7 +122,10 @@ def get_scraper_status(site: str) -> dict:
         "display_name": cfg.get("display_name"),
         "enabled": cfg.get("enabled"),
         "ttl_max": cfg.get("ttl_max"),
-        **entry,
+        "ttl_current": entry.get("ttl_current"),
+        "last_success": entry.get("last_success"),
+        "last_failure": entry.get("last_failure"),
+        "disabled_at": entry.get("disabled_at"),
     }
 
 
@@ -122,6 +135,16 @@ def get_all_scraper_status() -> list[dict]:
 
     Each entry combines runtime state with config values. Sites that have never
     run will have null state fields.
+
+    Each entry contains:
+      site          — site key (e.g. "nh4")
+      display_name  — human-readable club name
+      enabled       — whether the scraper is included in scheduled runs
+      ttl_max       — failure tolerance before circuit breaker disables the scraper
+      ttl_current   — remaining TTL (null if never run)
+      last_success  — ISO 8601 date of last successful scrape (null if never run)
+      last_failure  — ISO 8601 date of last failure (null if no failures)
+      disabled_at   — ISO 8601 date the scraper was disabled (null if active)
     """
     from scrapers.registry import all_sites
     from scrapers.state import StateStore
@@ -136,7 +159,10 @@ def get_all_scraper_status() -> list[dict]:
             "display_name": cfg.get("display_name"),
             "enabled": cfg.get("enabled"),
             "ttl_max": cfg.get("ttl_max"),
-            **entry,
+            "ttl_current": entry.get("ttl_current"),
+            "last_success": entry.get("last_success"),
+            "last_failure": entry.get("last_failure"),
+            "disabled_at": entry.get("disabled_at"),
         })
     return result
 
