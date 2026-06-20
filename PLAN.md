@@ -65,6 +65,13 @@ Depends on Task 1. Follows CLAUDE.md "Adding a New Scraper".
 `BaseScraper.run()` already drops past dates (`base.py:148`) and location-less records, so
 `map()` returns **all** parsed trail records without its own future-date filtering.
 
+**Scope:** only records with slugs starting `trail-` are scraped. All other page types
+returned by the API (e.g. `rs*` run reports) are silently ignored — not logged, not errored.
+
+**Date source:** always parse the date from the "Trail no" content value (e.g. `2631, 28 June
+2026`), **never from the slug**. The slug format (`trail-2631-28-june`) omits the year and
+cannot be used reliably — year inference from the slug would require fragile wrap-around logic.
+
 **`MAX_RECORDS` constant** (default `50`) drives `per_page` — not hardcoded inline, so the
 window can be widened by changing one value. (API orders by *publish* date, not run date, so
 future runs aren't contiguous; we fetch the capped set and let the base date-filter keep the
