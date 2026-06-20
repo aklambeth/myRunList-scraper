@@ -75,6 +75,8 @@ future ones.)
   JSON, filters `trail-*` slugs (FATAL if none), parses each `content.rendered` for the fields
   in the docs/SH3.md mapping table; lat/lng via `scrapers/geo.py`; expander injectable for tests.
   Note: `hares` splits on any of `&` `/` `,` (the field uses inconsistent separators).
+  **Placeholder detection:** if "From" has no valid UK postcode and contains `x, x, x`, skip
+  the record in `map()` (log DEBUG) — do not emit and rely on downstream filtering.
 - [ ] **Edit `config.yaml`:** add `sh3` site entry (`name`, `display_name`,
   `scraper: SH3Scraper`, `ttl_max: 5`, `enabled: true`). No `.env` key — endpoint is public.
 - [ ] **Rewrite `docs/SH3.md`** for the wp-json strategy (done as part of this work).

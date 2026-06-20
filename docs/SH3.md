@@ -126,18 +126,22 @@ placeholder (`x, x, x, ...`). On on exists on **trail pages only** — the only 
 
 ## Placeholders / unfilled trails
 
-Not-yet-arranged future trails are published as templates with placeholder values. Treat each
-as **absent** rather than emitting junk:
+Not-yet-arranged future trails are published as templates with placeholder values
+(e.g. `x, x, x, GUx xxx` in the From and On on fields). These records must be **detected and
+skipped explicitly in `map()`** — do not emit them and rely on downstream filtering.
+
+**Detection rule:** if the "From" value matches the placeholder pattern (no valid UK postcode
+extractable *and* the raw text contains the `x, x, x` template), skip the record entirely and
+log at DEBUG level. This is the clearest signal — a trail without a real start location is not
+ready to publish.
+
+The individual field handling for any value that slips through:
 
 | Field | Placeholder seen | Handling |
 |---|---|---|
-| From | `x, x, x, GUx xxx` (no real postcode match) | omit `location.name`/`postcode` |
 | What3Words | `https://w3w.co/#` (fails `W3S_PATTERN`) | omit `location.w3s` |
-| Map link to Start | `#` (not an `http` `maps.app.goo.gl` URL) | skip expansion, no lat/lng |
+| Map link to Start | `#` (not a `maps.app.goo.gl` URL) | skip expansion, no lat/lng |
 | On on | `x, x, x, GUx xxx` | omit `oninn` |
-
-A trail whose location ends up empty (`{}`) is dropped by `BaseScraper.run()`'s location
-filter — so unfilled future trails simply don't appear in output until they're populated.
 
 ---
 
