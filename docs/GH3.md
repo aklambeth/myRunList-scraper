@@ -311,3 +311,20 @@ if lat is not None:
 - No `robots.txt` restrictions on public event content
 - Single HTTP GET retrieves all data — no pagination
 - Do not fetch more than once per hour
+
+---
+
+## Regenerating synthetic test output
+
+`map()` accepts an optional `url_expander` so tests resolve goo.gl map links from
+a committed offline cache instead of calling the live service. (In practice GH3
+coordinates usually come from Waze `ll=` params, so no goo.gl call is made — but
+the hook keeps the test fully offline regardless.)
+
+- `tests/fixtures/GH3/gmaps_expansions.json` caches short URL → full URL, tagged
+  with a SHA-256 of `raw_response.html`. Editing the raw fixture invalidates the
+  hash, and tests fail loudly until the cache is refreshed.
+- Online, once (and whenever `raw_response.html` changes):
+  `python scripts/regen_synthetic.py --capture gh3`
+- Offline, to rebuild `tests/synthetic/gh3/output.json`:
+  `python scripts/regen_synthetic.py gh3`

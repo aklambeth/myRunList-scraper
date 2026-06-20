@@ -83,7 +83,8 @@ project/
 │   ├── conftest.py                  ← shared fixtures and loaders
 │   ├── fixtures/
 │   │   └── <name>/
-│   │       └── raw_response.*       ← real raw input captured from each site
+│   │       ├── raw_response.*       ← real raw input captured from each site
+│   │       └── gmaps_expansions.json ← goo.gl expansion cache (geo scrapers only)
 │   ├── synthetic/
 │   │   └── <name>/
 │   │       └── output.json          ← expected mapped output for unit tests
@@ -91,6 +92,8 @@ project/
 │   └── test_framework.py            ← TTL, logging, archiving tests
 ├── mcpserver/
 │   └── server.py                    ← stdio MCP interface
+├── scripts/
+│   └── regen_synthetic.py           ← regenerate synthetic output; --capture for one-time goo.gl fetch
 ├── run.py                           ← scraper CLI entry point
 ├── generate.py                      ← generator CLI entry point
 ├── config.yaml                      ← site configuration
@@ -396,9 +399,15 @@ class BaseScraper(ABC):
    - Implement `map()`
    - Add any required env var to `.env` and `.env.example`
 4. Add site entry to `config.yaml`
-5. Create `tests/fixtures/<name>/raw_response.json` with synthetic raw input
+5. Create `tests/fixtures/<name>/raw_response.*` with real raw input captured from the site
 6. Create `tests/synthetic/<name>/output.json` with expected mapped output
+   - If the scraper resolves Google Maps short URLs (`maps.app.goo.gl`), also run:
+     `python scripts/regen_synthetic.py --capture <name>` (online, once) to create
+     `tests/fixtures/<NAME>/gmaps_expansions.json`, then
+     `python scripts/regen_synthetic.py <name>` (offline) to generate `output.json`.
+   - Re-run `--capture` whenever `raw_response.*` is updated.
 7. Create `tests/test_<name>.py` to validate the mapping
+   - Geo scrapers: use the `gmaps_expander` fixture from `conftest.py` so tests stay offline.
 No other files need modification — the registry handles discovery automatically from `config.yaml`.
  
 ---

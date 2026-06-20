@@ -3,15 +3,17 @@ import pytest
 from scrapers.sites.gh3 import GH3Scraper, parse_latlng
 
 
-def test_gh3_map_matches_synthetic(fixture, synthetic):
+def test_gh3_map_matches_synthetic(fixture, synthetic, gmaps_expander):
+    raw = fixture("GH3", "raw_response.html")
     scraper = GH3Scraper()
-    records = scraper.map(fixture("GH3", "raw_response.html"))
+    records = scraper.map(raw, url_expander=gmaps_expander("GH3", raw))
     assert records == synthetic("gh3")
 
 
-def test_gh3_records_validate(fixture):
+def test_gh3_records_validate(fixture, gmaps_expander):
+    raw = fixture("GH3", "raw_response.html")
     scraper = GH3Scraper()
-    for record in scraper.map(fixture("GH3", "raw_response.html")):
+    for record in scraper.map(raw, url_expander=gmaps_expander("GH3", raw)):
         scraper.validate(record)
 
 

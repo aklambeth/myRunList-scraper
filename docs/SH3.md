@@ -214,3 +214,19 @@ What3Words → `w3w.co/fantastic.shiny.pack` · Map link to Start → `maps.app.
 - One GET retrieves all run data (`per_page=MAX_RECORDS`); coordinate resolution adds one
   HEAD request per trail with a real start map link.
 - Do not fetch more than once per hour.
+
+---
+
+## Regenerating synthetic test output
+
+`map()` accepts an optional `url_expander`. In production (`url_expander=None`)
+it expands goo.gl start-map links live and concurrently. Tests and synthetic
+regeneration inject an offline expander so no live call is made.
+
+- `tests/fixtures/SH3/gmaps_expansions.json` caches short URL → full URL, tagged
+  with a SHA-256 of `raw_response.json`. Editing the raw fixture invalidates the
+  hash, and tests fail loudly until the cache is refreshed.
+- Online, once (and whenever `raw_response.json` changes):
+  `python scripts/regen_synthetic.py --capture sh3`
+- Offline, to rebuild `tests/synthetic/sh3/output.json`:
+  `python scripts/regen_synthetic.py sh3`

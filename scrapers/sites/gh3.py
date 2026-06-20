@@ -97,10 +97,10 @@ def parse_latlng(description_html: str | None, url_expander=expand_gmaps_short_u
 
 class GH3Scraper(BaseScraper):
     name = "gh3"
-    version = "1.0.0"
+    version = "1.1.0"
     url = URL
 
-    def map(self, raw: str) -> list[dict]:
+    def map(self, raw: str, url_expander=expand_gmaps_short_url) -> list[dict]:
         soup = BeautifulSoup(raw, "html.parser")
         events = soup.select("div.eventon_list_event")
         if not events:
@@ -114,7 +114,7 @@ class GH3Scraper(BaseScraper):
             ld = self._event_jsonld(div)
             if ld is not None:
                 found_event_ld = True
-            rec = self._map_event(div, ld)
+            rec = self._map_event(div, ld, url_expander=url_expander)
             if rec is not None:
                 records.append(rec)
 
@@ -133,7 +133,7 @@ class GH3Scraper(BaseScraper):
                 return data
         return None
 
-    def _map_event(self, div, ld: dict | None) -> dict | None:
+    def _map_event(self, div, ld: dict | None, url_expander=expand_gmaps_short_url) -> dict | None:
         title_el = div.select_one("span.evcal_event_title")
         title = title_el.get_text(strip=True) if title_el else ""
         parsed = parse_title(title)
@@ -157,7 +157,7 @@ class GH3Scraper(BaseScraper):
         w3s = parse_w3s(description)
         if w3s:
             loc_fields["w3s"] = w3s
-        lat, lng = parse_latlng(description)
+        lat, lng = parse_latlng(description, url_expander=url_expander)
         if lat is not None:
             loc_fields["lat"] = lat
             loc_fields["lng"] = lng

@@ -156,11 +156,16 @@ def _extract_oninn_first_line(text_editor_text: str) -> str | None:
 
 class SH3Scraper(BaseScraper):
     name = "sh3"
-    version = "1.0.0"
+    version = "1.1.0"
     url = f"{URL_BASE}/wp-json/wp/v2/pages?search=trail&orderby=date&order=desc&per_page={MAX_RECORDS}"
 
-    def map(self, raw: str) -> list[dict]:
-        """Parse WordPress REST API JSON response into run records."""
+    def map(self, raw: str, url_expander=None) -> list[dict]:
+        """Parse WordPress REST API JSON response into run records.
+
+        ``url_expander`` lets callers (tests, synthetic-output regeneration)
+        inject a deterministic goo.gl expander. When ``None`` (production), short
+        URLs are expanded live and concurrently.
+        """
         pages = json.loads(raw)
         if not isinstance(pages, list):
             raise ScraperException(
@@ -175,18 +180,22 @@ class SH3Scraper(BaseScraper):
                 "no trail-* pages found in response", FailureMode.FATAL
             )
 
-        # Collect all gmaps short URLs across all trail pages and expand in parallel
-        all_short_urls: list[str] = []
-        for page in trail_pages:
-            soup = BeautifulSoup(page.get("content", {}).get("rendered", ""), "html.parser")
-            for a in soup.find_all("a", href=True):
-                if a.get_text(strip=True) == "Map link to Start" and "maps.app.goo.gl" in a["href"]:
-                    all_short_urls.append(a["href"])
+        if url_expander is not None:
+            # Injected expander (tests/regen): use it directly, no live network.
+            cached_expander = url_expander
+        else:
+            # Production: collect all gmaps short URLs and expand in parallel.
+            all_short_urls: list[str] = []
+            for page in trail_pages:
+                soup = BeautifulSoup(page.get("content", {}).get("rendered", ""), "html.parser")
+                for a in soup.find_all("a", href=True):
+                    if a.get_text(strip=True) == "Map link to Start" and "maps.app.goo.gl" in a["href"]:
+                        all_short_urls.append(a["href"])
 
-        expanded_cache = expand_gmaps_short_urls_parallel(all_short_urls)
+            expanded_cache = expand_gmaps_short_urls_parallel(all_short_urls)
 
-        def cached_expander(url: str) -> str | None:
-            return expanded_cache.get(url) or expand_gmaps_short_url(url)
+            def cached_expander(url: str) -> str | None:
+                return expanded_cache.get(url) or expand_gmaps_short_url(url)
 
         records: list[dict] = []
         for page in trail_pages:

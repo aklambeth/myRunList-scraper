@@ -103,6 +103,16 @@ pytest
 
 Tests run entirely offline using fixtures in `tests/fixtures/` and expected outputs in `tests/synthetic/`.
 
+Scrapers that resolve Google Maps short URLs (GH3, SH3) use a committed expansion cache
+(`tests/fixtures/<SITE>/gmaps_expansions.json`) so tests never call the live goo.gl service.
+The cache is tagged with a SHA-256 of the raw fixture — if you update a raw fixture you must
+refresh the cache and regenerate the synthetic output:
+
+```bash
+python scripts/regen_synthetic.py --capture <site>   # online: refresh cache (run once after updating raw fixture)
+python scripts/regen_synthetic.py <site>              # offline: regenerate tests/synthetic/<site>/output.json
+```
+
 ## Adding a new scraper
 
 1. Investigate the site — see existing `docs/*.md` for the pattern.
@@ -145,8 +155,10 @@ The registry discovers scrapers automatically from `config.yaml` — no other fi
 │       └── html_writer.py     writes self-contained HTML to file or stdout
 ├── mcpserver/
 │   └── server.py              stdio MCP server (9 tools)
+├── scripts/
+│   └── regen_synthetic.py     regenerate synthetic output (offline; --capture for one-time goo.gl fetch)
 ├── tests/
-│   ├── fixtures/              raw input fixtures (per site)
+│   ├── fixtures/              raw input fixtures (per site) + gmaps_expansions.json for geo scrapers
 │   ├── synthetic/             expected mapped output (per site)
 │   ├── test_<name>.py         per-site mapping tests
 │   ├── test_framework.py      TTL, logging, archiving tests
