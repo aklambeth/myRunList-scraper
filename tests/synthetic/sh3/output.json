@@ -1,0 +1,159 @@
+[
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2632,
+    "date": "2026-07-05",
+    "location": {
+      "name": "Hawley Sailing Club, Minley Road, Blackwater",
+      "postcode": "GU17 9EZ",
+      "lat": 51.3113932,
+      "lng": -0.8123675,
+      "w3s": "glance.emerald.cowering"
+    },
+    "oninn": "as above",
+    "hares": [
+      "Pole F*cker"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2632-5-july/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2631,
+    "date": "2026-06-28",
+    "location": {
+      "name": "St Martins Walk car park, Mill Lane, Dorking",
+      "postcode": "RH4 1DX",
+      "lat": 51.233441,
+      "lng": -0.3352835,
+      "w3s": "fantastic.shiny.pack"
+    },
+    "oninn": "TBD (so many to choose from – make sure you tell Bonn Bugle!)",
+    "hares": [
+      "Eskimo Nell",
+      "Eveready (again)"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2631-28-june/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2630,
+    "date": "2026-06-21",
+    "location": {
+      "name": "Staple Hill car park, Chobham",
+      "postcode": "KT16 0ED",
+      "lat": 51.374651,
+      "lng": -0.60527,
+      "w3s": "cares.spark.brass"
+    },
+    "oninn": "The Surrey Cricketers, Windlesham, GU20 6HE",
+    "hares": [
+      "Bonn Bugle"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2630-21-june/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2637,
+    "date": "2026-08-09",
+    "location": {
+      "name": "Downside Common, Cobham",
+      "postcode": "KT11 3NU",
+      "w3s": "bunch.across.free"
+    },
+    "oninn": "The Cricketers, KT11 3NX",
+    "hares": [
+      "FRB",
+      "Atalanta"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2637-9-august/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2629,
+    "date": "2026-06-14",
+    "location": {
+      "name": "Blackheath Lane car park",
+      "postcode": "GU4 8RB",
+      "lat": 51.2042823,
+      "lng": -0.525212,
+      "w3s": "rafters.voice.decanter"
+    },
+    "oninn": "Percy Arms, Dorking Road GU4 8NP",
+    "hares": [
+      "Tosser"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2629-14-june/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2628,
+    "date": "2026-06-07",
+    "location": {
+      "name": "The Street, Capel",
+      "postcode": "RH5 5EL",
+      "w3s": "motion.making.petal"
+    },
+    "oninn": "The Crown, RH5 5JY (food available)",
+    "hares": [
+      "Mrs G",
+      "Uncle Gerry"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2628-7-june/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2627,
+    "date": "2026-05-31",
+    "location": {
+      "name": "Sheepleas, St. Mary’s car park, West Horsley",
+      "postcode": "KT24 6TA",
+      "w3s": "swan.issues.estate"
+    },
+    "oninn": "Barley Mow, 181 The Street, West Horsley, KT24 6HR",
+    "hares": [
+      "Dr. Death"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2627-31-may/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2626,
+    "date": "2026-05-24",
+    "location": {
+      "name": "Kestrel Way, Woking",
+      "postcode": "GU21 3BG",
+      "w3s": "loud.help.quick"
+    },
+    "oninn": "The Cricketers (use garden), GU21 4XB",
+    "hares": [
+      "RHUM"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2626-24-may/"
+  },
+  {
+    "name": "Surrey Hash House Harriers",
+    "kennel": "sh3",
+    "runno": 2625,
+    "date": "2026-05-17",
+    "location": {
+      "name": "Off Winterfold Heath Road",
+      "postcode": "GU5 9EN",
+      "lat": 51.1718201,
+      "lng": -0.4681476,
+      "w3s": "fence.zones.chitchat"
+    },
+    "oninn": "The Drummond at Albury, GU5 9AG",
+    "hares": [
+      "J Arthur"
+    ],
+    "website": "https://surreyhashhouseharriers.com/trail-2625-17-may/"
+  }
+]

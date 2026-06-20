@@ -46,3 +46,10 @@ sites:
     scraper: CHI3Scraper
     ttl_max: 5
     enabled: true
+
+  sh3:
+    name: "Surrey Hash House Harriers"
+    display_name: "Surrey Hash House Harriers"
+    scraper: SH3Scraper
+    ttl_max: 5
+    enabled: true

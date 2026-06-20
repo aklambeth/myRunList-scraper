@@ -14,11 +14,11 @@ import re
 from datetime import datetime
 from urllib.parse import parse_qs, unquote, urlparse
 
-import requests
 from bs4 import BeautifulSoup
 
 from models.run import W3S_PATTERN, Location, Run
 from scrapers.base import BaseScraper, FailureMode, ScraperException
+from scrapers.geo import expand_gmaps_short_url, parse_latlng_from_gmaps_url
 
 log = logging.getLogger(__name__)
 
@@ -68,21 +68,6 @@ def parse_w3s(description_html: str | None) -> str | None:
             if re.match(W3S_PATTERN, slug):
                 return slug
     return None
-
-
-def expand_gmaps_short_url(url: str) -> str | None:
-    try:
-        r = requests.head(url, allow_redirects=True, timeout=5)
-        return r.url
-    except requests.RequestException:
-        return None
-
-
-def parse_latlng_from_gmaps_url(url: str):
-    m = re.search(r"/@(-?\d+\.\d+),(-?\d+\.\d+),", url)
-    if m:
-        return float(m.group(1)), float(m.group(2))
-    return None, None
 
 
 def parse_latlng(description_html: str | None, url_expander=expand_gmaps_short_url):
