@@ -53,3 +53,10 @@ sites:
     scraper: SH3Scraper
     ttl_max: 5
     enabled: true
+
+  wwh3:
+    name: "wwh3"
+    display_name: "Worthy Winchester Hash House Harriers"
+    scraper: WWH3Scraper
+    ttl_max: 5
+    enabled: true

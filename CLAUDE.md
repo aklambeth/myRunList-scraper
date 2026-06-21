@@ -425,3 +425,4 @@ Per-site strategy is documented in `docs/<name>.md` and referenced here.
 | `hh3`    | [docs/HH3.md](./docs/HH3.md)       | Hursley Hash House Harriers |
 | `chi3`   | [docs/CHI3.md](./docs/CHI3.md)     | Chichester Hash House Harriers |
 | `sh3`    | [docs/SH3.md](./docs/SH3.md)       | Surrey Hash House Harriers |
+| `wwh3`   | [docs/WWH3.md](./docs/WWH3.md)     | Worthy Winchester Hash House Harriers |
