@@ -1,100 +1,61 @@
-# PLAN — Shared geo helpers + SH3 (Surrey H3) scraper
+# PLAN — Google Geocoding enrichment fallback
 
-> Transient task tracker. Remove once both tasks are merged.
+> Transient task tracker. Remove once merged.
 
 ## Context
 
-SH3 (Surrey Hash House Harriers) is a WordPress + Elementor site. The WordPress REST API
-returns every trail page with its **full detail content embedded** in `content.rendered`, so a
-**single request** captures all run data (run no, date+year, hares, start location + postcode,
-on-on, What3Words, and a compressed Google Maps start link):
+WWH3 (and potentially other sites) publish venue `name`/`address`/`postcode` but **no
+coordinates** — `venue.geo_lat`/`geo_lng` are always null and the detail page resolves
+location only through a client-side Google Maps embed iframe (see
+[docs/WWH3.md](./docs/WWH3.md)). There is no What3Words, so the existing W3W enrichment in
+`generators/enrichment.py` cannot fill them.
 
-```
-https://surreyhashhouseharriers.com/wp-json/wp/v2/pages?search=trail&orderby=date&order=desc&per_page=<MAX_RECORDS>
-```
+This adds a **downstream Google Geocoding enrichment** that reassembles the embed's `q=`
+string (`address + postcode`) and resolves lat/lng via the Google Geocoding API using our
+own key — modelled directly on the existing W3W enrichment workaround.
 
-Coordinates need the same Google-Maps-short-URL expansion that GH3 already implements. Those
-helpers currently live in `scrapers/sites/gh3.py` and must be shared before SH3 can reuse them.
-The work is **two sequential tasks**: (1) refactor the geo helpers into a shared module;
-(2) build the SH3 scraper. Each task is done when its tests pass; Task 2 additionally must
-return expected data from `python3 run.py --dry-run --site sh3`.
+## Decisions
 
-Detailed SH3 scraper strategy lives in [docs/SH3.md](./docs/SH3.md).
+- **Query** = full `address + postcode` (fall back to `name + postcode` when address absent).
+- **Generic** — runs for all kennels, like the kennel-agnostic W3W step.
+- **Cache key = `f"{kennel}:{runno}"`** (event identity, the W3W-triple equivalent).
+- **Negative caching:** `ZERO_RESULTS` is cached as a negative entry so we never re-query an
+  unresolvable address. Transient failures (network, `OVER_QUERY_LIMIT`, `REQUEST_DENIED`)
+  are NOT cached and decrement the TTL breaker instead.
+- **Staleness self-heal:** cache value stores the queried address; a changed query is a miss
+  and re-geocodes (applies to positive and negative entries).
+- **No key → skip entirely:** if `GOOGLE_GEOCODING_API_KEY` is unset, the geocode pass is
+  skipped (log once at INFO) — no HTTP, no breaker change.
 
-Fixtures captured: `tests/fixtures/SH3/raw_response.json` (the wp-json response),
-`tests/fixtures/SH3/43250.html` (one detail page, reference only).
+## Tasks
 
----
+### 1. `generators/enrichment.py` (core)
+- Generalize `_write_cache` lock path so W3W and geocode share the `flock` + atomic
+  `os.replace` writer. Add `_GEOCODE_CACHE_PATH = data/geocode_cache.json`,
+  `_GEOCODE_STATE_KEY = "enrich_geocode"`, `_GEOCODE_TTL_MAX = 5`, `_NO_MATCH = object()`.
+- `lookup_geocode(query)` → `(lat,lng)` on `OK`, `_NO_MATCH` on `ZERO_RESULTS`, `None` on
+  transient/network. Never raises.
+- New geocode branch in `enrich_records`, after the W3W block: read key once (skip pass if
+  absent); per record build `key`+`query`, cache-first with query match, then call lookup
+  and cache/record-breaker per the three outcomes.
 
-## Task 1 — Extract Google Maps helpers into a shared module
+### 2. `generate.py`
+- Add `load_dotenv(override=True)` so the key is available on the CLI path (MCP already does).
 
-Move `expand_gmaps_short_url()` and `parse_latlng_from_gmaps_url()` out of
-`scrapers/sites/gh3.py` into a shared module so multiple scrapers can use them.
+### 3. Config + docs
+- `.env.example` / `.env`: add `GOOGLE_GEOCODING_API_KEY=` (shared enrichment key).
+- `CLAUDE.md` → Location Enrichment: add Google Geocoding fallback to the chain + subsection.
+- `README.md` → Environment variables: document the optional key.
+- `docs/WWH3.md`: flip the coordinates note from "future" to "implemented".
+- `.gitignore`: add `data/geocode_cache.json`.
 
-**Shape:** module of plain functions (idiomatic Python for stateless helpers; matches existing
-codebase style — `BaseScraper` is a class because it carries state, these helpers do not).
+### 4. Tests — `tests/test_enrichment_geocode.py` (offline)
+Cache hit, negative cache, transient-vs-no-match, staleness, no-key skip, query construction.
 
-- [ ] **New `scrapers/geo.py`** with the two functions (moved verbatim from `gh3.py`):
-  - `expand_gmaps_short_url(url) -> str | None` — `requests.head(url, allow_redirects=True,
-    timeout=5)`, returns `r.url`; `None` on `requests.RequestException`.
-  - `parse_latlng_from_gmaps_url(url) -> tuple[float, float] | tuple[None, None]` — regex
-    `/@(-?\d+\.\d+),(-?\d+\.\d+),` → `(lat, lng)`, else `(None, None)`. Keep the 2-tuple return
-    (callers unpack `lat, lng = ...`); only the type hint is tightened vs the bare gh3 version.
-- [ ] **Edit `scrapers/sites/gh3.py`:** remove the two local defs; add
-  `from scrapers.geo import expand_gmaps_short_url, parse_latlng_from_gmaps_url`. `parse_latlng()`
-  stays in gh3 (default `url_expander=expand_gmaps_short_url`) and keeps working unchanged.
-- [ ] **New `tests/test_geo.py`:** unit-test `parse_latlng_from_gmaps_url` (a `/@51.23,-0.50,`
-  URL and a no-match URL); test `expand_gmaps_short_url` with `requests.head` mocked (no network).
-- [ ] **Edit `CLAUDE.md`:** document the shared-helper convention —
-  - add `scrapers/geo.py` to the Project Structure tree
-    (`← shared geo helpers: Google Maps short-URL expansion, lat/lng parsing`)
-  - add a line to "Adding a New Scraper" pointing site scrapers at `scrapers/geo.py` for
-    coordinate/Maps helpers instead of writing their own.
+## Verification
 
-**Gate:** `pytest tests/test_geo.py tests/test_gh3.py` green. (`test_gh3.py` injects
-`url_expander` and imports only `parse_latlng`, so it is unaffected by the move.)
-
----
-
-## Task 2 — Implement the SH3 scraper  (detail: [docs/SH3.md](./docs/SH3.md))
-
-Depends on Task 1. Follows CLAUDE.md "Adding a New Scraper".
-
-**Data flow:** single wp-json GET → `map()` parses JSON → keep slugs matching `^trail-\d+-`
-(skips `rs*` "Runday Shag" run-report pages) → parse each `content.rendered`.
-`BaseScraper.run()` already drops past dates (`base.py:148`) and location-less records, so
-`map()` returns **all** parsed trail records without its own future-date filtering.
-
-**Scope:** only records with slugs starting `trail-` are scraped. All other page types
-returned by the API (e.g. `rs*` run reports) are silently ignored — not logged, not errored.
-
-**Date source:** always parse the date from the "Trail no" content value (e.g. `2631, 28 June
-2026`), **never from the slug**. The slug format (`trail-2631-28-june`) omits the year and
-cannot be used reliably — year inference from the slug would require fragile wrap-around logic.
-
-**`MAX_RECORDS` constant** (default `50`) drives `per_page` — not hardcoded inline, so the
-window can be widened by changing one value. (API orders by *publish* date, not run date, so
-future runs aren't contiguous; we fetch the capped set and let the base date-filter keep the
-future ones.)
-
-- [ ] **New `scrapers/sites/sh3.py`** — `SH3Scraper(BaseScraper)`, `name="sh3"`,
-  `version="1.0.0"`, `url` = wp-json endpoint with `per_page=MAX_RECORDS`. `map()` parses
-  JSON, filters `trail-*` slugs (FATAL if none), parses each `content.rendered` for the fields
-  in the docs/SH3.md mapping table; lat/lng via `scrapers/geo.py`; expander injectable for tests.
-  Note: `hares` splits on any of `&` `/` `,` (the field uses inconsistent separators).
-  **Placeholder detection:** if "From" has no valid UK postcode and contains `x, x, x`, skip
-  the record in `map()` (log DEBUG) — do not emit and rely on downstream filtering.
-- [ ] **Edit `config.yaml`:** add `sh3` site entry (`name`, `display_name`,
-  `scraper: SH3Scraper`, `ttl_max: 5`, `enabled: true`). No `.env` key — endpoint is public.
-- [ ] **Rewrite `docs/SH3.md`** for the wp-json strategy (done as part of this work).
-- [ ] **`tests/synthetic/sh3/output.json`** — expected mapped output for `trail-*` fixture
-  records (e.g. 2631 → `2026-06-28`, hares `["Eskimo Nell","Eveready"]`, postcode `RH4 1DX`,
-  w3s `fantastic.shiny.pack`, website `.../trail-2631-28-june/`).
-- [ ] **`tests/test_sh3.py`** — load fixture, run `map()` with a stub `url_expander` (returns a
-  known `/@lat,lng,` URL) for deterministic offline lat/lng; assert against synthetic output;
-  assert `rs*` pages excluded.
-
-**Gate:** `pytest tests/test_sh3.py` green, then `python3 run.py --dry-run --site sh3` returns
-the expected SH3 run records.
-
-CLAUDE.md already lists the `sh3` row in the Site Strategy Documents table — no change needed.
+1. `pytest tests/test_enrichment_geocode.py -v` and full `pytest` (no regressions).
+2. No key: `run.py --site wwh3` + `generate.py --json` → WWH3 records without lat/lng,
+   INFO "geocoding skipped" logged, breaker untouched.
+3. With key: coords populated, `data/geocode_cache.json` written, second pass cache-served.
+4. Repeated failures trip `enrich_geocode` in `state/state.json`; W3W unaffected.

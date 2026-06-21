@@ -26,11 +26,17 @@ cp .env.example .env
 ### Environment variables
 
 ```bash
-NH4_API_KEY=   # Google Sheet gid (see docs/NH4.md)
-DH3_API_KEY=   # Fouita widget UID (see docs/DH3.md)
+NH4_API_KEY=                 # Google Sheet gid (see docs/NH4.md)
+DH3_API_KEY=                 # Fouita widget UID (see docs/DH3.md)
+GOOGLE_GEOCODING_API_KEY=    # optional; shared key for the geocoding enrichment fallback
 ```
 
 GH3 and R2D2H3 require no API keys.
+
+`GOOGLE_GEOCODING_API_KEY` is optional and not tied to any single site. When set, the
+generator resolves `location.lat`/`lng` for records that have an address/postcode but no
+coordinates and no What3Words (e.g. WWH3). If it is unset, the geocoding step is skipped
+entirely.
 
 ## Usage
 
@@ -94,6 +100,10 @@ Each scraper has a `ttl_max` (default 5). A failed run decrements the TTL; three
 | Transient (404, 500, parse error) | −1 |
 | Auth (401, 403) | −2 |
 | Fatal (endpoint gone, schema change) | → 0 immediately |
+
+The generator's location-enrichment steps have their own independent breakers — state keys
+`enrich_w3w` (What3Words) and `enrich_geocode` (Google Geocoding) — so a failing enrichment
+service disables only itself, never a scraper.
 
 ## Tests
 

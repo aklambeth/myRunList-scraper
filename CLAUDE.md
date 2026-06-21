@@ -320,6 +320,14 @@ lat + lng already present? → skip
 location.w3s present?
     → check cache (data/w3w_cache.json) → hit: use it
                                         → miss: scrape what3words.com → populate lat/lng, write cache
+↓ (still no coords)
+GOOGLE_GEOCODING_API_KEY set?  → no: skip the whole geocode step
+    → build query from location.address (or name) + postcode
+    → check cache (data/geocode_cache.json), keyed kennel:runno
+        → hit + same query: use it (negative entry → leave absent)
+        → miss / changed query: call Google Geocoding API
+            → OK: populate lat/lng, write positive cache entry
+            → ZERO_RESULTS: write negative cache entry (never re-queried)
 ```
 
 ### W3W workaround
@@ -331,6 +339,18 @@ What Three Words does not offer a free API. As a workaround, `generators/enrichm
 ### W3W cache (`data/w3w_cache.json`)
 
 Results are cached indefinitely (up to 1000 entries, FIFO eviction). Cache is always checked before making an HTTP request. Concurrent-write safety is handled with `fcntl.flock()` + atomic `os.replace()`. Cache file is gitignored.
+
+### Google Geocoding fallback
+
+For records with no `w3s` and no coordinates (e.g. WWH3, whose venues expose only a Google Maps embed), `generators/enrichment.py` reassembles the embed's `q=` string — `location.address` (or `name`) plus `postcode` — and resolves `lat`/`lng` via the **Google Geocoding API** using our own key.
+
+**Key required.** The step reads `GOOGLE_GEOCODING_API_KEY` (a shared enrichment key, not a per-site scraper key). If it is unset, the entire geocode step is skipped — no HTTP, no circuit-breaker change, logged once at `INFO`.
+
+**Circuit breaker.** A TTL circuit breaker (`ttl_max=5`, `−2` per error, state key `"enrich_geocode"` in `state/state.json`) disables the step on repeated *transient* failures (network error, `OVER_QUERY_LIMIT`, `REQUEST_DENIED`) and logs a `WARNING`. A clean `ZERO_RESULTS` answer counts as a success.
+
+### Geocode cache (`data/geocode_cache.json`)
+
+Keyed by event identity `kennel:runno` (the canonical equivalent of the W3W triple). Each entry stores `lat`, `lng`, and the `query` used. A subsequent lookup whose query differs (address corrected at source) is treated as a miss and re-geocoded (self-heal). `ZERO_RESULTS` is cached as a **negative entry** (`lat`/`lng` null) so an unresolvable address is never re-queried; transient failures are not cached. Indefinite (up to 1000 entries, FIFO eviction), same `fcntl.flock()` + atomic `os.replace()` machinery as the W3W cache. Cache file is gitignored.
 
 ---
 
