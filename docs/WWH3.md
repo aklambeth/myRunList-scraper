@@ -93,7 +93,7 @@ The `description` field is usually empty but occasionally carries the on-in,
 e.g. `<p>OnOn &#8211; The Bunch of Grapes</p>`. Strip HTML tags, unescape, then
 remove a leading `OnOn` / `On On` label and separator. Omit `oninn` if blank.
 
-### Coordinates — not available at source
+### Coordinates — resolved via Google Geocoding enrichment
 
 `venue.geo_lat` / `venue.geo_lng` are present as keys but are **always null**.
 The detail page renders location only via a Google Maps **embed iframe** whose
@@ -102,14 +102,18 @@ The detail page renders location only via a Google Maps **embed iframe** whose
 client-side by Google and never appear in the page HTML. There is no
 What3Words, so the existing W3W enrichment does not apply.
 
+The **Google Geocoding enrichment** (see `CLAUDE.md` → Location Enrichment)
+reconstructs the `q=` string from `location.address` (or `name`) + `postcode`
+and resolves `lat`/`lng` via the Google Geocoding API using `GOOGLE_GEOCODING_API_KEY`.
+
 The scraper therefore:
 - **Conditionally maps** `venue.geo_lat`/`geo_lng` → `location.lat`/`lng` (cast
   to `float`) **when both are non-null**, so coordinates flow through
   automatically if the club ever populates them at source. They are null today,
   so `exclude_none` omits them.
 - Emits clean `name`/`address`/`postcode` so that a **downstream geocoding
-  enrichment** (future, separate change) can assemble the same `q=` string the
-  embed uses and resolve `lat`/`lng` via the Google Geocoding API using **our
+  enrichment** (implemented in `generators/enrichment.py`) assembles the same `q=` string the
+  embed uses and resolves `lat`/`lng` via the Google Geocoding API using **our
   own** API key — analogous to the W3W enrichment workaround. See
   `CLAUDE.md` → Location Enrichment.
 

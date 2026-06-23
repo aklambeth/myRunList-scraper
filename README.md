@@ -12,8 +12,12 @@ A Python scraping pipeline that collects run data from multiple Hash House Harri
 | `r2d2h3` | R2D2 Hash House Harriers | Custom ASPX endpoint |
 | `hh3` | Hursley Hash House Harriers | Server-rendered HTML table |
 | `chi3` | Chichester Hash House Harriers | Server-rendered HTML table |
+| `sh3` | Surrey Hash House Harriers | Server-rendered HTML (Elementor) |
+| `wwh3` | Worthy Winchester Hash House Harriers | Server-rendered HTML (Google Maps embed) |
 
 ## Setup
+
+### Local
 
 ```bash
 python3 -m venv .venv
@@ -22,6 +26,21 @@ pip install -r requirements.txt
 cp .env.example .env
 # edit .env and add your API keys
 ```
+
+### Docker
+
+```bash
+cp .env.example .env
+# edit .env and add your API keys
+docker compose up -d
+docker compose exec app bash
+```
+
+Docker Compose reads `.env` automatically and injects the keys into the container. The image is the same base used by the dev container; no Node.js or MCP tooling is installed.
+
+### Dev container (VS Code / Codespaces)
+
+Open the repo in VS Code and choose **Reopen in Container**. The dev container installs Python dependencies and the MCP server automatically via `postCreateCommand`.
 
 ### Environment variables
 
@@ -33,10 +52,11 @@ GOOGLE_GEOCODING_API_KEY=    # optional; shared key for the geocoding enrichment
 
 GH3 and R2D2H3 require no API keys.
 
-`GOOGLE_GEOCODING_API_KEY` is optional and not tied to any single site. When set, the
-generator resolves `location.lat`/`lng` for records that have an address/postcode but no
-coordinates and no What3Words (e.g. WWH3). If it is unset, the geocoding step is skipped
-entirely.
+`GOOGLE_GEOCODING_API_KEY` is optional and not tied to any single site. The generator
+resolves `location.lat`/`lng` for records that have an address/postcode but no coordinates
+and no What3Words (e.g. WWH3). With the key set it uses the Google Geocoding API; when the
+key is unset or Google is unavailable it falls back to the keyless Nominatim / OpenStreetMap
+geocoder, so enrichment works even with no key configured.
 
 ## Usage
 
@@ -63,7 +83,6 @@ python3 generate.py --json output/runs.json               # JSON to file
 python3 generate.py --html output/index.html              # self-contained HTML to file
 python3 generate.py --json --html output/index.html       # both at once
 python3 generate.py --json --transform latest             # one record per kennel, future runs only
-python3 generate.py --json --transform latest             # one record per kennel, piped JSON
 ```
 
 The generator reads from `data/*.json` and is independent of the scraper — run them on different schedules as needed.
@@ -102,8 +121,8 @@ Each scraper has a `ttl_max` (default 5). A failed run decrements the TTL; three
 | Fatal (endpoint gone, schema change) | → 0 immediately |
 
 The generator's location-enrichment steps have their own independent breakers — state keys
-`enrich_w3w` (What3Words) and `enrich_geocode` (Google Geocoding) — so a failing enrichment
-service disables only itself, never a scraper.
+`enrich_w3w` (What3Words), `enrich_geocode` (Google Geocoding) and `enrich_nominatim`
+(OpenStreetMap) — so a failing enrichment service disables only itself, never a scraper.
 
 ## Tests
 

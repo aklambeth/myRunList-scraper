@@ -8,6 +8,8 @@ import json
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from generators import transformer
 from generators.enrichment import enrich_records
 from generators.writers.html_writer import HTMLWriter
@@ -73,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
     html_dest = Path(args.html) if args.html else None
 
     records = _load_records(_DATA_DIR)
+
+    load_dotenv(override=True)
 
     state = StateStore()
     records = enrich_records(records, state)

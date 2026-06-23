@@ -10,34 +10,40 @@ location only through a client-side Google Maps embed iframe (see
 [docs/WWH3.md](./docs/WWH3.md)). There is no What3Words, so the existing W3W enrichment in
 `generators/enrichment.py` cannot fill them.
 
-This adds a **downstream Google Geocoding enrichment** that reassembles the embed's `q=`
-string (`address + postcode`) and resolves lat/lng via the Google Geocoding API using our
-own key — modelled directly on the existing W3W enrichment workaround.
+This adds a **downstream geocoding enrichment** that reassembles the embed's `q=` string
+(`address + postcode`) and resolves lat/lng via the **Google Geocoding API** (our key),
+**falling back to keyless Nominatim / OpenStreetMap** when Google is unavailable — modelled
+on the existing W3W enrichment workaround.
 
 ## Decisions
 
 - **Query** = full `address + postcode` (fall back to `name + postcode` when address absent).
 - **Generic** — runs for all kennels, like the kennel-agnostic W3W step.
-- **Cache key = `f"{kennel}:{runno}"`** (event identity, the W3W-triple equivalent).
-- **Negative caching:** `ZERO_RESULTS` is cached as a negative entry so we never re-query an
-  unresolvable address. Transient failures (network, `OVER_QUERY_LIMIT`, `REQUEST_DENIED`)
-  are NOT cached and decrement the TTL breaker instead.
-- **Staleness self-heal:** cache value stores the queried address; a changed query is a miss
-  and re-geocodes (applies to positive and negative entries).
-- **No key → skip entirely:** if `GOOGLE_GEOCODING_API_KEY` is unset, the geocode pass is
-  skipped (log once at INFO) — no HTTP, no breaker change.
+- **Cache** = shared `data/geocode_cache.json`, entries keyed `geocode:<query>` (Google) and
+  `nominatim:<query>` (Nominatim); lookups match on the stored `query`.
+- **Negative caching:** `ZERO_RESULTS` / empty result is cached as a negative entry so we
+  never re-query an unresolvable address. Transient (network) failures are NOT cached.
+- **Staleness self-heal:** cache value stores the query; a changed query is a miss and
+  re-geocodes (positive and negative entries).
+- **Nominatim fallback (not skip):** when `GOOGLE_GEOCODING_API_KEY` is unset, Google returns
+  `REQUEST_DENIED` / `OVER_QUERY_LIMIT`, or the Google breaker is disabled, the step falls
+  back to Nominatim so enrichment works with no key configured.
+- **Two breakers:** `enrich_geocode` (Google) and `enrich_nominatim` (Nominatim), each
+  `ttl_max=5`, decremented on transient failures only.
 
 ## Tasks
 
 ### 1. `generators/enrichment.py` (core)
-- Generalize `_write_cache` lock path so W3W and geocode share the `flock` + atomic
-  `os.replace` writer. Add `_GEOCODE_CACHE_PATH = data/geocode_cache.json`,
-  `_GEOCODE_STATE_KEY = "enrich_geocode"`, `_GEOCODE_TTL_MAX = 5`, `_NO_MATCH = object()`.
-- `lookup_geocode(query)` → `(lat,lng)` on `OK`, `_NO_MATCH` on `ZERO_RESULTS`, `None` on
-  transient/network. Never raises.
-- New geocode branch in `enrich_records`, after the W3W block: read key once (skip pass if
-  absent); per record build `key`+`query`, cache-first with query match, then call lookup
-  and cache/record-breaker per the three outcomes.
+- Generalize `_write_cache` (lock path derived from cache filename; optional `query` field)
+  so W3W, Google and Nominatim share the `flock` + atomic `os.replace` writer. Add
+  `_GEOCODE_CACHE_PATH`, breaker keys `enrich_geocode` / `enrich_nominatim` (`ttl_max=5`),
+  and the `_NO_MATCH` / `_GOOGLE_UNAVAILABLE` sentinels.
+- `lookup_geocode(query)` → `(lat,lng)` on `OK`, `_NO_MATCH` on `ZERO_RESULTS`,
+  `_GOOGLE_UNAVAILABLE` on no-key / `REQUEST_DENIED` / `OVER_QUERY_LIMIT`, `None` on
+  network error. `lookup_nominatim(query)` → `(lat,lng)` / `_NO_MATCH` / `None`. Never raise.
+- Geocode branch in `enrich_records`, after the W3W block: per record build `query`,
+  cache-first by query match, try Google, then fall back to Nominatim when Google is
+  unavailable or its breaker trips.
 
 ### 2. `generate.py`
 - Add `load_dotenv(override=True)` so the key is available on the CLI path (MCP already does).
