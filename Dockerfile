@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
 
-RUN git clone https://github.com/aklambeth/myRunList-scraper.git /workspace
+COPY . /workspace
 
 WORKDIR /workspace
 

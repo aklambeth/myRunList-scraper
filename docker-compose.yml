@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    build: https://github.com/aklambeth/myRunList-scraper.git#master
     volumes:
       - ./data:/workspace/data
       - ./logs:/workspace/logs
