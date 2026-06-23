@@ -1,5 +1,6 @@
 services:
   app:
+    container_name: myrunlist
     build: https://github.com/aklambeth/myRunList-scraper.git#master
     volumes:
       - ./data:/workspace/data
