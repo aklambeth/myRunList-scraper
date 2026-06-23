@@ -356,7 +356,7 @@ For records with no `w3s` and no coordinates (e.g. WWH3, whose venues expose onl
 
 ### Geocode cache (`data/geocode_cache.json`)
 
-Shared by both providers, keyed by the geocode query prefixed with the provider — `geocode:<query>` (Google) and `nominatim:<query>` (Nominatim). Each entry stores `lat`, `lng`, and the `query` used. Lookups match on the stored `query`, so a changed address (corrected at source) is a miss and re-geocoded (self-heal). `ZERO_RESULTS` / empty result is cached as a **negative entry** (`lat`/`lng` null) so an unresolvable address is never re-queried; transient failures are not cached. Indefinite (up to 1000 entries, FIFO eviction), same `fcntl.flock()` + atomic `os.replace()` machinery as the W3W cache. Cache file is gitignored.
+One entry per event, keyed by the stable identity `kennel:runno` (the canonical equivalent of the W3W triple) and **shared by both providers** (Google and Nominatim write the same key). Each entry stores `lat`, `lng`, and the `query` used. A cached entry is honoured only while its stored `query` matches; a changed address (corrected at source) is a miss and re-geocoded **in place** under the same key (self-heal, no orphan entries). `ZERO_RESULTS` / empty result is cached as a **negative entry** (`lat`/`lng` null) so an unresolvable address is never re-queried; transient failures are not cached. Indefinite (up to 1000 entries, FIFO eviction), same `fcntl.flock()` + atomic `os.replace()` machinery as the W3W cache. Cache file is gitignored.
 
 ---
 

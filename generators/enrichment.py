@@ -98,14 +98,20 @@ def lookup_w3w(address: str, cache_path: Path = _CACHE_PATH) -> tuple[float, flo
     return lat, lng
 
 
-def lookup_geocode(query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tuple[float, float] | object | None:
-    """Return (lat, lng) on OK, _NO_MATCH on ZERO_RESULTS, _GOOGLE_UNAVAILABLE on REQUEST_DENIED/OVER_QUERY_LIMIT, None on transient error. Never raises."""
+def lookup_geocode(entry_key: str, query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tuple[float, float] | object | None:
+    """Resolve coords for a record, cached under the stable entry_key (kennel:runno).
+
+    Returns (lat, lng) on OK, _NO_MATCH on ZERO_RESULTS, _GOOGLE_UNAVAILABLE on
+    REQUEST_DENIED/OVER_QUERY_LIMIT, None on transient error. Never raises.
+    A cached entry is honoured only while its stored query matches; a changed
+    query (address corrected at source) is a miss and re-geocodes in place.
+    """
     cache = _read_cache(cache_path)
-    for entry_key, entry in cache.items():
-        if entry.get("query") == query:
-            if entry["lat"] is None and entry["lng"] is None:
-                return _NO_MATCH
-            return entry["lat"], entry["lng"]
+    entry = cache.get(entry_key)
+    if entry is not None and entry.get("query") == query:
+        if entry["lat"] is None and entry["lng"] is None:
+            return _NO_MATCH
+        return entry["lat"], entry["lng"]
 
     api_key = os.environ.get("GOOGLE_GEOCODING_API_KEY")
     if not api_key:
@@ -122,10 +128,10 @@ def lookup_geocode(query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tuple[
     if status == "OK" and data.get("results"):
         loc = data["results"][0]["geometry"]["location"]
         lat, lng = float(loc["lat"]), float(loc["lng"])
-        _write_cache(f"geocode:{query}", lat, lng, cache_path, query=query)
+        _write_cache(entry_key, lat, lng, cache_path, query=query)
         return lat, lng
     elif status == "ZERO_RESULTS":
-        _write_cache(f"geocode:{query}", None, None, cache_path, query=query)
+        _write_cache(entry_key, None, None, cache_path, query=query)
         return _NO_MATCH
     elif status in ("REQUEST_DENIED", "OVER_QUERY_LIMIT"):
         return _GOOGLE_UNAVAILABLE
@@ -133,15 +139,19 @@ def lookup_geocode(query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tuple[
         return None
 
 
-def lookup_nominatim(query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tuple[float, float] | object | None:
-    """Return (lat, lng) on OK, _NO_MATCH on empty results, None on transient error. Never raises."""
+def lookup_nominatim(entry_key: str, query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tuple[float, float] | object | None:
+    """Resolve coords via Nominatim, cached under the stable entry_key (kennel:runno).
+
+    Returns (lat, lng) on OK, _NO_MATCH on empty results, None on transient error.
+    Never raises. Shares the geocode cache with Google: a cached entry is honoured
+    only while its stored query matches (changed query → re-geocode in place).
+    """
     cache = _read_cache(cache_path)
-    nominatim_key = f"nominatim:{query}"
-    for entry_key, entry in cache.items():
-        if entry_key == nominatim_key:
-            if entry["lat"] is None and entry["lng"] is None:
-                return _NO_MATCH
-            return entry["lat"], entry["lng"]
+    entry = cache.get(entry_key)
+    if entry is not None and entry.get("query") == query:
+        if entry["lat"] is None and entry["lng"] is None:
+            return _NO_MATCH
+        return entry["lat"], entry["lng"]
 
     url = "https://nominatim.openstreetmap.org/search"
     try:
@@ -157,22 +167,22 @@ def lookup_nominatim(query: str, cache_path: Path = _GEOCODE_CACHE_PATH) -> tupl
 
     if results:
         lat, lng = float(results[0]["lat"]), float(results[0]["lon"])
-        _write_cache(nominatim_key, lat, lng, cache_path, query=query)
+        _write_cache(entry_key, lat, lng, cache_path, query=query)
         return lat, lng
     else:
-        _write_cache(nominatim_key, None, None, cache_path, query=query)
+        _write_cache(entry_key, None, None, cache_path, query=query)
         return _NO_MATCH
 
 
 # ------------------------------------------------------------------ enrichment
 
 
-def _try_nominatim(query: str, loc: dict, state_store) -> bool:
+def _try_nominatim(entry_key: str, query: str, loc: dict, state_store) -> bool:
     """Attempt Nominatim lookup and populate loc in-place. Returns True if coords were set."""
     if state_store.is_disabled(_NOMINATIM_STATE_KEY):
         return False
 
-    coords = lookup_nominatim(query)
+    coords = lookup_nominatim(entry_key, query)
     if coords is _NO_MATCH:
         return False
     elif coords:
@@ -240,7 +250,10 @@ def enrich_records(records: list[dict], state_store) -> list[dict]:
         query = " ".join(p for p in (address, postcode) if p)
         entry_key = f"{record['kennel']}:{record['runno']}"
 
-        # Check cache first (covers both Google and Nominatim entries)
+        # Cache first — one entry per event keyed kennel:runno, shared by both
+        # providers. Honour it only while the stored query matches (a changed
+        # address falls through and re-geocodes in place). A negative entry
+        # (null coords) means a known no-match → skip without calling out.
         cache = _read_cache(_GEOCODE_CACHE_PATH)
         if entry_key in cache:
             cached_entry = cache[entry_key]
@@ -254,7 +267,7 @@ def enrich_records(records: list[dict], state_store) -> list[dict]:
         use_nominatim = google_disabled
 
         if not google_disabled:
-            coords = lookup_geocode(query, cache_path=_GEOCODE_CACHE_PATH)
+            coords = lookup_geocode(entry_key, query, cache_path=_GEOCODE_CACHE_PATH)
             if coords is _NO_MATCH:
                 continue
             elif coords is _GOOGLE_UNAVAILABLE:
@@ -271,6 +284,6 @@ def enrich_records(records: list[dict], state_store) -> list[dict]:
                     use_nominatim = True
 
         if use_nominatim:
-            _try_nominatim(query, loc, state_store)
+            _try_nominatim(entry_key, query, loc, state_store)
 
     return records

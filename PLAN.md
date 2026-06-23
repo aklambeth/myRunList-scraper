@@ -19,8 +19,9 @@ on the existing W3W enrichment workaround.
 
 - **Query** = full `address + postcode` (fall back to `name + postcode` when address absent).
 - **Generic** — runs for all kennels, like the kennel-agnostic W3W step.
-- **Cache** = shared `data/geocode_cache.json`, entries keyed `geocode:<query>` (Google) and
-  `nominatim:<query>` (Nominatim); lookups match on the stored `query`.
+- **Cache** = shared `data/geocode_cache.json`, one entry per event keyed `kennel:runno`
+  (Google and Nominatim share the key); honoured while the stored `query` matches, else
+  re-geocoded in place.
 - **Negative caching:** `ZERO_RESULTS` / empty result is cached as a negative entry so we
   never re-query an unresolvable address. Transient (network) failures are NOT cached.
 - **Staleness self-heal:** cache value stores the query; a changed query is a miss and

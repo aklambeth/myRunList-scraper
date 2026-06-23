@@ -112,7 +112,7 @@ class TestLookupGeocode:
         tmp_cache.write_text(
             json.dumps({"wwh3:2144": {"lat": 51.0, "lng": -1.0, "query": "Test St SO24 9LW"}})
         )
-        result = lookup_geocode("Test St SO24 9LW", cache_path=tmp_cache)
+        result = lookup_geocode("wwh3:2144", "Test St SO24 9LW", cache_path=tmp_cache)
         assert result == (51.0, -1.0)
 
     def test_cache_hit_negative(self, tmp_cache: Path, mock_api_key):
@@ -120,29 +120,34 @@ class TestLookupGeocode:
         tmp_cache.write_text(
             json.dumps({"wwh3:2144": {"lat": None, "lng": None, "query": "Bad Address SO24 9LW"}})
         )
-        result = lookup_geocode("Bad Address SO24 9LW", cache_path=tmp_cache)
+        result = lookup_geocode("wwh3:2144", "Bad Address SO24 9LW", cache_path=tmp_cache)
         assert result is _NO_MATCH
 
     def test_cache_miss_staleness(self, tmp_cache: Path, mock_api_key):
-        """Cache entry exists but query differs → treated as miss."""
+        """Same key but a changed query → treated as a miss → re-geocoded in place."""
         tmp_cache.write_text(
             json.dumps({"wwh3:2144": {"lat": 51.0, "lng": -1.0, "query": "Old Address SO24 9LW"}})
         )
-        # The cache lookup should not match because query differs
-        # (this is tested in enrich_records; lookup_geocode doesn't check entry_key)
-        # lookup_geocode checks by query match in the cache, so a different query is a cache miss
+        api_resp = _make_api_response("OK", [_make_result(52.0, -2.0)])
+        with patch("requests.get", return_value=_MockResponse(json.dumps(api_resp))):
+            result = lookup_geocode("wwh3:2144", "New Address SO24 9LW", cache_path=tmp_cache)
+        assert result == (52.0, -2.0)
+        # The entry is overwritten in place under the same key (no orphan).
+        cache = json.loads(tmp_cache.read_text())
+        assert list(cache.keys()) == ["wwh3:2144"]
+        assert cache["wwh3:2144"]["query"] == "New Address SO24 9LW"
 
     def test_no_api_key_returns_unavailable(self, tmp_cache: Path, monkeypatch: pytest.MonkeyPatch):
         """Without API key, lookup_geocode returns _GOOGLE_UNAVAILABLE so the caller falls back to Nominatim."""
         monkeypatch.delenv("GOOGLE_GEOCODING_API_KEY", raising=False)
-        result = lookup_geocode("Test St SO24 9LW", cache_path=tmp_cache)
+        result = lookup_geocode("wwh3:2144", "Test St SO24 9LW", cache_path=tmp_cache)
         assert result is _GOOGLE_UNAVAILABLE
 
     def test_network_error_returns_none(self, tmp_cache: Path, mock_api_key):
         """Network error → returns None, does not write cache."""
         import requests as _requests
         with patch("requests.get", side_effect=_requests.RequestException("network error")):
-            result = lookup_geocode("Test St SO24 9LW", cache_path=tmp_cache)
+            result = lookup_geocode("wwh3:2144", "Test St SO24 9LW", cache_path=tmp_cache)
         assert result is None
         # Cache file should not exist (no write on transient error)
         assert not tmp_cache.exists()
@@ -151,7 +156,7 @@ class TestLookupGeocode:
         """OK response with results → returns (lat, lng), writes positive cache entry."""
         api_resp = _make_api_response("OK", [_make_result(51.123, -1.456)])
         with patch("requests.get", return_value=_MockResponse(json.dumps(api_resp))):
-            result = lookup_geocode("Test St SO24 9LW", cache_path=tmp_cache)
+            result = lookup_geocode("wwh3:2144", "Test St SO24 9LW", cache_path=tmp_cache)
         assert result == (51.123, -1.456)
         # Verify cache was written
         cache = json.loads(tmp_cache.read_text())
@@ -165,7 +170,7 @@ class TestLookupGeocode:
         """ZERO_RESULTS → returns _NO_MATCH, writes negative cache entry."""
         api_resp = _make_api_response("ZERO_RESULTS")
         with patch("requests.get", return_value=_MockResponse(json.dumps(api_resp))):
-            result = lookup_geocode("Bad Address SO24 9LW", cache_path=tmp_cache)
+            result = lookup_geocode("wwh3:2144", "Bad Address SO24 9LW", cache_path=tmp_cache)
         assert result is _NO_MATCH
         # Verify negative cache entry was written
         cache = json.loads(tmp_cache.read_text())
@@ -179,7 +184,7 @@ class TestLookupGeocode:
         """REQUEST_DENIED / OVER_QUERY_LIMIT → returns _GOOGLE_UNAVAILABLE (caller falls back to Nominatim)."""
         api_resp = _make_api_response("REQUEST_DENIED")
         with patch("requests.get", return_value=_MockResponse(json.dumps(api_resp))):
-            result = lookup_geocode("Test St SO24 9LW", cache_path=tmp_cache)
+            result = lookup_geocode("wwh3:2144", "Test St SO24 9LW", cache_path=tmp_cache)
         assert result is _GOOGLE_UNAVAILABLE
 
 
