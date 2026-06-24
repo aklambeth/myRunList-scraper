@@ -29,14 +29,29 @@ cp .env.example .env
 
 ### Docker
 
+On any machine with Docker installed, you don't need to clone the repo. The compose file pulls and builds everything from GitHub automatically:
+
+On any machine with Docker installed, you don't need to clone the repo. Download the compose file, create a `.env` with your API keys, then start the container:
+
 ```bash
-cp .env.example .env
-# edit .env and add your API keys
-docker compose up -d
-docker compose exec app bash
+curl -o docker-compose.yml "https://raw.githubusercontent.com/aklambeth/myRunList-scraper/refs/heads/master/docker-compose.yml"
 ```
 
-Docker Compose reads `.env` automatically and injects the keys into the container. The image is the same base used by the dev container; no Node.js or MCP tooling is installed.
+Create a `.env` file in the same directory with the following keys:
+
+```bash
+NH4_API_KEY=                 # Google Sheet gid (see docs/NH4.md)
+DH3_API_KEY=                 # Fouita widget UID (see docs/DH3.md)
+GOOGLE_GEOCODING_API_KEY=    # optional; shared key for the geocoding enrichment fallback
+```
+
+Then start the container:
+
+```bash
+docker compose up -d
+```
+
+Docker Compose reads `.env` automatically and injects the keys into the container. `data/`, `logs/`, and `output/` are created on the host automatically and mounted into the container so output persists across restarts.
 
 ### Dev container (VS Code / Codespaces)
 
