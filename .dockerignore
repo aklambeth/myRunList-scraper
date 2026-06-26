@@ -1,0 +1,6 @@
+docker/.bashrc
+.env
+data/
+logs/
+output/
+state/

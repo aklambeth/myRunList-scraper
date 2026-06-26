@@ -53,6 +53,31 @@ docker compose up -d
 
 Docker Compose reads `.env` automatically and injects the keys into the container. `data/`, `logs/`, and `output/` are created on the host automatically and mounted into the container so output persists across restarts.
 
+#### Running commands
+
+Exec into the container for an interactive shell with aliases pre-loaded:
+
+```bash
+docker exec -it myrunlist bash
+```
+
+Or run a single command directly:
+
+```bash
+docker exec myrunlist bash -c "<alias> [args]"
+```
+
+| Alias | Equivalent command | Notes |
+|---|---|---|
+| `run` | `python3 run.py` | Run all enabled scrapers |
+| `dry-run` | `python3 run.py --dry-run` | Validate output, no writes |
+| `status` | `python3 run.py --status` | Show TTL state of all scrapers |
+| `logs <name>` | `python3 run.py --getlogs <name>` | Print logs for a named scraper |
+| `reset <name>` | `python3 run.py --reset <name>` | Re-enable a disabled scraper |
+| `gen` | `python3 generate.py` | JSON to stdout |
+| `gen-html` | `python3 generate.py --html output/index.html --transform latest` | Write HTML to output/ |
+| `gen-json` | `python3 generate.py --json output/runs.json --transform latest` | Write JSON to output/ |
+
 ### Dev container (VS Code / Codespaces)
 
 Open the repo in VS Code and choose **Reopen in Container**. The dev container installs Python dependencies and the MCP server automatically via `postCreateCommand`.
@@ -124,6 +149,34 @@ The MCP server exposes the pipeline as tools for LLM access. Requires Python ≥
 | `reset_scraper` | Re-enable a circuit-breaker-disabled scraper |
 | `set_scraper_enabled` | Toggle a scraper on/off in `config.yaml` |
 | `set_scraper_ttl_max` | Set TTL max for a scraper in `config.yaml` |
+
+#### VS Code `.mcp.json`
+
+**Local (virtualenv):**
+
+```json
+{
+  "mcpServers": {
+    "myRunList": {
+      "command": ".venv/bin/python",
+      "args": ["-m", "mcpserver.server"]
+    }
+  }
+}
+```
+
+**Docker** (container must be running via `docker compose up -d`):
+
+```json
+{
+  "mcpServers": {
+    "myRunList": {
+      "command": "docker",
+      "args": ["exec", "-i", "myrunlist", "python3", "-m", "mcpserver.server"]
+    }
+  }
+}
+```
 
 ## Circuit breaker
 
